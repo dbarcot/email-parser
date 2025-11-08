@@ -43,7 +43,8 @@ except ImportError:
 # REGEX PATTERNS FOR VACATION KEYWORDS
 # =============================================================================
 
-VACATION_PATTERNS = [
+# Default built-in patterns (fallback if external file not found)
+DEFAULT_VACATION_PATTERNS = [
     # === DOVOLENÁ ===
     r'\bdovolen[aeouyi][a-z]*',
     r'\bdov\b',
@@ -51,31 +52,31 @@ VACATION_PATTERNS = [
     r'\bcerp[aei][a-z]*\s+dovolen',
     r'\bzaslouzen[aeouyi]*\s+dovolen',
     r'\bradn[aeouyi]*\s+dovolen',
-    
+
     # === PRÁZDNINY ===
     r'\bprazdnin[aeouyi]*',
     r'\bprazd\.',
-    
+
     # === VOLNO ===
     r'\bvoln[aeouyi][a-z]*',
     r'\bvoln\b',
-    
+
     # === NEPŘÍTOMNOST ===
     r'\bnepritom[a-z]*',
     r'\bneprit\b',
     r'\bneprit\.',
-    
+
     # === MIMO KANCELÁŘ ===
     r'\bmimo\s+kancela[rz][a-z]*',
     r'\bmimo\s+k\b',
     r'\bmimo\s+k\.',
     r'\bmimo\s+provoz',
-    
+
     # === OUT OF OFFICE ===
     r'\bo+\s*o+\s*o+',
     r'\bout\s+of\s+office',
     r'\bout\s+off',
-    
+
     # === NEMOCENSKÁ / SICK LEAVE ===
     r'\bnemocensk[aeouyi]*',
     r'\bnemoc\b',
@@ -86,24 +87,24 @@ VACATION_PATTERNS = [
     r'\bp\.?\s*n\.',
     r'\bpracovn[aeouyi]*\s+neschopn',
     r'\bneschopenk[aeouyi]',
-    
+
     # === ZDRAVOTNÍ ===
     r'\bzdravotn[aeouyi][a-z]*',
     r'\bzdr\.',
     r'\bzdr\s+voln',
     r'\bzdr\s+d[uu]vod',
-    
+
     # === ABSENCE ===
     r'\babsen[ct][a-z]*',
     r'\babs\b',
     r'\babs\.',
-    
+
     # === NEDOSTUPNÝ ===
     r'\bnedostupn[aeouyi]*',
     r'\bnedost\b',
     r'\bnedost\.',
     r'\bne\s+budu\s+dostupn',
-    
+
     # === RODIČOVSKÁ/MATEŘSKÁ/OTCOVSKÁ ===
     r'\brodicovsk[aeouyi]*',
     r'\brd\b',
@@ -115,7 +116,7 @@ VACATION_PATTERNS = [
     r'\botcovsk[aeouyi]*',
     r'\bot\b',
     r'\bot\.',
-    
+
     # === NÁVRAT / VRÁTÍM SE ===
     r'\bvrat[ii][a-z]*\s+se',
     r'\bzpet\s+(od|az|do|v)',
@@ -123,19 +124,19 @@ VACATION_PATTERNS = [
     r'\bbudu\s+zpet',
     r'\bbudu\s+zpatky',
     r'\bzpat(ky|ecky)',
-    
+
     # === K DISPOZICI ===
     r'\bk\s+dispozici',
     r'\bdispozic[iei]',
     r'\bne\s+budu\s+k\s+zastiz',
     r'\bk\s+zastiz',
-    
+
     # === UŽÍVÁM SI / BAVÍM SE ===
     r'\buziv[aei][a-z]*',
     r'\bbav[ii][a-z]*\s+se',
     r'\brelax',
     r'\bodpociv[aei]',
-    
+
     # === ANGLICKÉ VÝRAZY ===
     r'\bvacation',
     r'\bholiday',
@@ -153,7 +154,7 @@ VACATION_PATTERNS = [
     r'\bautoreply',
     r'\bauto\s+reply',
     r'\bautomatic\s+reply',
-    
+
     # === SPECIFICKÉ FRÁZE ===
     r'\bv\s+dob[ee]\s+m[ee]\s+nepritom',
     r'\bpo\s+dobu\s+m[ee]\s+nepritom',
@@ -165,7 +166,7 @@ VACATION_PATTERNS = [
     r'\blimited\s+access',
     r'\bno\s+access',
     r'\bno\s+email',
-    
+
     # === ČASOVÉ INDIKÁTORY ===
     r'\bod\s+\d+\.\d+',
     r'\bdo\s+\d+\.\d+',
@@ -173,8 +174,78 @@ VACATION_PATTERNS = [
     r'\bvr[aa]t[ii][a-z]*\s+\d+\.',
 ]
 
-# Compile patterns once for performance
-COMPILED_PATTERNS = [re.compile(p, re.IGNORECASE) for p in VACATION_PATTERNS]
+# Global variable for compiled patterns (will be initialized in load_patterns)
+COMPILED_PATTERNS = []
+
+def load_patterns_from_file(filepath):
+    """
+    Load regex patterns from external file.
+
+    Args:
+        filepath: Path to pattern file
+
+    Returns:
+        List of pattern strings
+    """
+    patterns = []
+
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            for line in f:
+                # Strip whitespace
+                line = line.strip()
+
+                # Skip empty lines and comments
+                if not line or line.startswith('#'):
+                    continue
+
+                # Add pattern
+                patterns.append(line)
+
+        return patterns
+
+    except Exception as e:
+        print(f"[WARNING] Failed to load patterns from {filepath}: {e}")
+        return None
+
+def initialize_patterns(pattern_file=None):
+    """
+    Initialize regex patterns from file or use defaults.
+
+    Args:
+        pattern_file: Path to custom pattern file (optional)
+
+    Returns:
+        Number of patterns loaded
+    """
+    global COMPILED_PATTERNS
+
+    patterns = None
+
+    # Try custom pattern file if specified
+    if pattern_file:
+        print(f"[*] Loading patterns from: {pattern_file}")
+        patterns = load_patterns_from_file(pattern_file)
+        if patterns:
+            print(f"[*] Loaded {len(patterns)} custom patterns")
+
+    # Try default pattern file
+    if not patterns:
+        default_pattern_file = os.path.join(os.path.dirname(__file__), 'vacation_patterns.txt')
+        if os.path.exists(default_pattern_file):
+            patterns = load_patterns_from_file(default_pattern_file)
+            if patterns:
+                print(f"[*] Loaded {len(patterns)} patterns from {default_pattern_file}")
+
+    # Fall back to built-in patterns
+    if not patterns:
+        print(f"[*] Using built-in patterns ({len(DEFAULT_VACATION_PATTERNS)} patterns)")
+        patterns = DEFAULT_VACATION_PATTERNS
+
+    # Compile patterns for performance
+    COMPILED_PATTERNS = [re.compile(p, re.IGNORECASE) for p in patterns]
+
+    return len(COMPILED_PATTERNS)
 
 # =============================================================================
 # GLOBAL COUNTERS (for signal handler)
@@ -978,6 +1049,9 @@ Examples:
   # Filter only emails FROM the target address (ignore To/Cc/Reply-To)
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --from-only
 
+  # Use custom pattern file
+  python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --patterns my_patterns.txt
+
   # Dry run (count matches only)
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --dry-run
 
@@ -1031,6 +1105,12 @@ Examples:
         help='Filter emails only by From field (ignore To/Cc/Reply-To)'
     )
 
+    parser.add_argument(
+        '--patterns',
+        default=None,
+        help='Custom pattern file (default: vacation_patterns.txt if exists, otherwise built-in)'
+    )
+
     args = parser.parse_args()
     
     # Validate mbox file
@@ -1062,11 +1142,14 @@ Examples:
             print(f"[ERROR] Failed to create output directories: {e}")
             sys.exit(1)
     
-    # Run processing
+    # Initialize patterns
     print("\n" + "="*50)
     print("VACATION EMAIL EXTRACTOR v1.0")
     print("="*50)
-    
+
+    initialize_patterns(pattern_file=args.patterns)
+
+    # Run processing
     stats = process_mbox(
         mbox_path=args.mbox,
         target_email=target_email,
