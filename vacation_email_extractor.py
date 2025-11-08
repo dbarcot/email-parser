@@ -32,6 +32,13 @@ except ImportError:
     print("[WARNING] BeautifulSoup not installed. HTML emails will be processed as plain text.")
     print("          Install with: pip install beautifulsoup4")
 
+# Try to import tqdm for progress bar
+try:
+    from tqdm import tqdm
+    HAS_TQDM = True
+except ImportError:
+    HAS_TQDM = False
+
 # =============================================================================
 # REGEX PATTERNS FOR VACATION KEYWORDS
 # =============================================================================
@@ -175,6 +182,90 @@ COMPILED_PATTERNS = [re.compile(p, re.IGNORECASE) for p in VACATION_PATTERNS]
 processed_count = 0
 matched_count = 0
 failed_count = 0
+
+# =============================================================================
+# PROGRESS BAR
+# =============================================================================
+
+class ProgressBar:
+    """Simple progress bar for email processing."""
+
+    def __init__(self, total=None, enable=True):
+        """
+        Initialize progress bar.
+
+        Args:
+            total: Total number of items (None if unknown)
+            enable: Enable/disable progress display
+        """
+        self.total = total
+        self.enable = enable
+        self.last_update = 0
+        self.start_time = time.time()
+
+    def update(self, processed, matched, failed):
+        """
+        Update progress bar.
+
+        Args:
+            processed: Number of emails processed
+            matched: Number of matches found
+            failed: Number of failed emails
+        """
+        if not self.enable:
+            return
+
+        # Update every email or every 0.1 seconds (whichever is less frequent)
+        current_time = time.time()
+        if current_time - self.last_update < 0.1 and processed != self.total:
+            return
+
+        self.last_update = current_time
+        elapsed = current_time - self.start_time
+
+        # Calculate speed
+        speed = processed / elapsed if elapsed > 0 else 0
+
+        # Build progress line
+        if self.total:
+            percentage = (processed / self.total) * 100
+            progress_str = f"Progress: {processed:,}/{self.total:,} ({percentage:.1f}%)"
+
+            # Estimate time remaining
+            if speed > 0:
+                remaining = (self.total - processed) / speed
+                eta_str = f" | ETA: {self._format_time(remaining)}"
+            else:
+                eta_str = ""
+        else:
+            progress_str = f"Processed: {processed:,}"
+            eta_str = ""
+
+        # Build status line
+        status = (
+            f"\r{progress_str} | "
+            f"Matches: {matched} | "
+            f"Failed: {failed} | "
+            f"Speed: {speed:.1f} emails/s"
+            f"{eta_str}"
+        )
+
+        # Print with padding to clear previous line
+        print(status + " " * 10, end='', flush=True)
+
+    def finish(self):
+        """Finish progress bar and print newline."""
+        if self.enable:
+            print()  # New line after progress
+
+    def _format_time(self, seconds):
+        """Format seconds to human readable time."""
+        if seconds < 60:
+            return f"{seconds:.0f}s"
+        elif seconds < 3600:
+            return f"{seconds/60:.1f}m"
+        else:
+            return f"{seconds/3600:.1f}h"
 
 # =============================================================================
 # TEXT NORMALIZATION
@@ -430,26 +521,30 @@ def extract_email_body(msg):
 # EMAIL FILTERING
 # =============================================================================
 
-def email_involves_target(msg, target_email):
+def email_involves_target(msg, target_email, from_only=False):
     """
     Check if target email is involved in From/To/Cc/Reply-To headers.
-    
+
     Args:
         msg: email.message.Message object
         target_email: Target email address (normalized lowercase)
-    
+        from_only: If True, only check From header; otherwise check all headers
+
     Returns:
         Boolean
     """
-    headers_to_check = ['From', 'To', 'Cc', 'Reply-To']
-    
+    if from_only:
+        headers_to_check = ['From']
+    else:
+        headers_to_check = ['From', 'To', 'Cc', 'Reply-To']
+
     for header in headers_to_check:
         header_value = msg.get(header, '')
         if header_value:
             emails = extract_email_addresses(header_value)
             if target_email in emails:
                 return True
-    
+
     return False
 
 # =============================================================================
@@ -680,11 +775,11 @@ signal.signal(signal.SIGINT, signal_handler)
 # MAIN PROCESSING FUNCTION
 # =============================================================================
 
-def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file, 
-                 email_limit=None, dry_run=False):
+def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
+                 email_limit=None, dry_run=False, from_only=False):
     """
     Main processing function.
-    
+
     Args:
         mbox_path: Path to mbox file
         target_email: Target email address (normalized lowercase)
@@ -693,7 +788,8 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
         log_file: CSV log file path
         email_limit: Maximum emails to process (None = unlimited)
         dry_run: If True, only count matches without saving
-    
+        from_only: If True, only filter by From header (ignore To/Cc/Reply-To)
+
     Returns:
         Statistics dict
     """
@@ -706,7 +802,7 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
     
     # Initialize CSV logger
     csv_logger = CSVLogger(log_file) if not dry_run else None
-    
+
     # Open mbox file
     print(f"\n[*] Opening mbox file: {mbox_path}")
     try:
@@ -714,33 +810,52 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
     except Exception as e:
         print(f"[ERROR] Failed to open mbox file: {e}")
         return None
-    
+
     print(f"[*] Target email: {target_email}")
+    if from_only:
+        print(f"[*] Filter mode: From field only")
+    else:
+        print(f"[*] Filter mode: From/To/Cc/Reply-To fields")
     print(f"[*] Output dir: {output_dir}")
     if dry_run:
         print(f"[*] DRY RUN MODE - no files will be saved")
     if email_limit:
         print(f"[*] Email limit: {email_limit}")
+
+    # Try to get total count for progress bar
+    total_count = None
+    if HAS_TQDM:
+        print(f"[*] Counting emails in mbox file...")
+        try:
+            total_count = len(mbox)
+            if email_limit:
+                total_count = min(total_count, email_limit)
+        except:
+            pass  # Some mbox files don't support len()
+
     print(f"\n[*] Processing emails...\n")
-    
+
     start_time = time.time()
-    
+
+    # Initialize progress bar
+    progress = ProgressBar(total=total_count, enable=True)
+
     # Process each email
     for msg in mbox:
         # Check email limit
         if email_limit and processed_count >= email_limit:
-            print(f"\n[*] Email limit ({email_limit}) reached. Stopping.")
+            progress.finish()
+            print(f"[*] Email limit ({email_limit}) reached. Stopping.")
             break
-        
+
         processed_count += 1
-        
-        # Progress update every 100 emails
-        if processed_count % 100 == 0:
-            print(f"Processed: {processed_count:,} | Matches: {matched_count} | Failed: {failed_count}")
+
+        # Update progress bar
+        progress.update(processed_count, matched_count, failed_count)
         
         try:
             # === FILTER 1: Email match ===
-            if not email_involves_target(msg, target_email):
+            if not email_involves_target(msg, target_email, from_only=from_only):
                 continue
             
             # === CONTENT EXTRACTION ===
@@ -816,7 +931,10 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
     
     # Close mbox
     mbox.close()
-    
+
+    # Finish progress bar
+    progress.finish()
+
     # Calculate elapsed time
     elapsed = time.time() - start_time
     
@@ -853,13 +971,16 @@ def main():
 Examples:
   # Basic usage
   python vacation_email_extractor.py --mbox archive.mbox --email jan.novak@firma.cz
-  
+
   # With custom output directory
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --output ./results
-  
+
+  # Filter only emails FROM the target address (ignore To/Cc/Reply-To)
+  python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --from-only
+
   # Dry run (count matches only)
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --dry-run
-  
+
   # Process only first 100 emails
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --email-limit 100
         """
@@ -903,7 +1024,13 @@ Examples:
         default='extraction_log.csv',
         help='CSV log file path (default: extraction_log.csv)'
     )
-    
+
+    parser.add_argument(
+        '--from-only',
+        action='store_true',
+        help='Filter emails only by From field (ignore To/Cc/Reply-To)'
+    )
+
     args = parser.parse_args()
     
     # Validate mbox file
@@ -947,7 +1074,8 @@ Examples:
         failed_dir=failed_dir,
         log_file=args.log_file,
         email_limit=args.email_limit,
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        from_only=args.from_only
     )
     
     if stats is None:
