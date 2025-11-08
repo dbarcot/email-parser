@@ -589,6 +589,91 @@ def extract_email_body(msg):
     return ' '.join(text_parts)
 
 # =============================================================================
+# IMMEDIATE REPLY EXTRACTION (QUOTE FILTERING)
+# =============================================================================
+
+# Quote marker patterns for different email clients
+QUOTE_PATTERNS = [
+    # === Gmail / Standard ===
+    r'^On\s+.+\d{4}.+wrote:\s*$',                    # On Mon, Jan 15, 2024 at 10:30 AM Person <email> wrote:
+    r'^On\s+\d{1,2}/\d{1,2}/\d{2,4}.+wrote:\s*$',   # On 1/15/2024, Person wrote:
+
+    # === Czech Thunderbird / Standard ===
+    r'^Dne\s+\d{1,2}\.\d{1,2}\.\d{2,4}.+napsal',    # Dne 15.01.2024 v 10:30 Person napsal(a):
+    r'^Dne\s+.+napsal\(a\):',                        # Dne ... napsal(a):
+
+    # === Outlook ===
+    r'^-{3,}.*Original.*Message.*-{3,}',             # -----Original Message-----
+    r'^_{5,}\s*$',                                    # ___________________
+    r'^From:\s*.+$',                                  # From: line (Outlook header)
+
+    # === Quote prefix lines ===
+    r'^\s*>+',                                        # > quoted line
+    r'^\s*\|',                                        # | quoted line
+
+    # === Date-based headers ===
+    r'^\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}.+wrote:',  # 2024-01-15 10:30 Person wrote:
+    r'^\[\d{4}-\d{2}-\d{2}',                         # [2024-01-15 10:30]
+]
+
+# Compile quote patterns (don't use MULTILINE flag - we check line by line)
+COMPILED_QUOTE_PATTERNS = [re.compile(p, re.IGNORECASE) for p in QUOTE_PATTERNS]
+
+def extract_immediate_reply(body_text):
+    """
+    Extract only the immediate reply from email body, filtering out quoted history.
+
+    This function detects common quote markers from various email clients
+    (Gmail, Outlook, Thunderbird, etc.) and returns only the user's immediate
+    response, not the entire conversation thread.
+
+    Args:
+        body_text: Full email body text
+
+    Returns:
+        Immediate reply text (or full text if no quotes detected)
+    """
+    if not body_text or len(body_text.strip()) < 10:
+        return body_text
+
+    lines = body_text.split('\n')
+    immediate_lines = []
+    quote_detected = False
+
+    for line in lines:
+        # Check if line matches any quote pattern
+        is_quote_line = False
+
+        for pattern in COMPILED_QUOTE_PATTERNS:
+            if pattern.match(line):
+                is_quote_line = True
+                quote_detected = True
+                break
+
+        # Stop collecting lines when quote is detected
+        if is_quote_line:
+            break
+
+        immediate_lines.append(line)
+
+    # Extract immediate reply
+    immediate_text = '\n'.join(immediate_lines).strip()
+
+    # Fallback logic: if quotes were detected, always use the extracted text
+    # If NO quotes detected and text is short, return full text (might be bottom-posting)
+    MIN_REPLY_LENGTH = 20
+
+    if quote_detected:
+        # Quotes were found - return extracted text even if short
+        return immediate_text if immediate_text else body_text
+    elif len(immediate_text) < MIN_REPLY_LENGTH:
+        # No quotes detected and text is very short - return full text
+        return body_text
+    else:
+        # No quotes but text is reasonable length
+        return immediate_text
+
+# =============================================================================
 # EMAIL FILTERING
 # =============================================================================
 
@@ -847,7 +932,7 @@ signal.signal(signal.SIGINT, signal_handler)
 # =============================================================================
 
 def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
-                 email_limit=None, dry_run=False, from_only=False):
+                 email_limit=None, dry_run=False, from_only=False, reply_only=False):
     """
     Main processing function.
 
@@ -860,6 +945,7 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
         email_limit: Maximum emails to process (None = unlimited)
         dry_run: If True, only count matches without saving
         from_only: If True, only filter by From header (ignore To/Cc/Reply-To)
+        reply_only: If True, search only in immediate reply (filter quoted text)
 
     Returns:
         Statistics dict
@@ -887,6 +973,10 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
         print(f"[*] Filter mode: From field only")
     else:
         print(f"[*] Filter mode: From/To/Cc/Reply-To fields")
+    if reply_only:
+        print(f"[*] Search mode: Immediate reply only (quoted text filtered)")
+    else:
+        print(f"[*] Search mode: Full email body")
     print(f"[*] Output dir: {output_dir}")
     if dry_run:
         print(f"[*] DRY RUN MODE - no files will be saved")
@@ -926,7 +1016,11 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
             
             # Get body
             body = extract_email_body(msg)
-            
+
+            # Apply immediate reply extraction if requested
+            if reply_only and body:
+                body = extract_immediate_reply(body)
+
             # Combine subject and body for searching
             if not body or len(body.strip()) < 10:
                 # Body too short or empty - use only subject
@@ -1041,6 +1135,9 @@ Examples:
   # Use custom pattern file
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --patterns my_patterns.txt
 
+  # Search only in immediate reply (filter quoted email history)
+  python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --reply-only
+
   # Dry run (count matches only)
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --dry-run
 
@@ -1100,6 +1197,12 @@ Examples:
         help='Custom pattern file (default: vacation_patterns.txt if exists, otherwise built-in)'
     )
 
+    parser.add_argument(
+        '--reply-only',
+        action='store_true',
+        help='Search only in immediate reply (filter out quoted email history)'
+    )
+
     args = parser.parse_args()
     
     # Validate mbox file
@@ -1147,7 +1250,8 @@ Examples:
         log_file=args.log_file,
         email_limit=args.email_limit,
         dry_run=args.dry_run,
-        from_only=args.from_only
+        from_only=args.from_only,
+        reply_only=args.reply_only
     )
     
     if stats is None:
