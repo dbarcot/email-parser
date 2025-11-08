@@ -893,23 +893,12 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
     if email_limit:
         print(f"[*] Email limit: {email_limit}")
 
-    # Try to get total count for progress bar
-    total_count = None
-    if HAS_TQDM:
-        print(f"[*] Counting emails in mbox file...")
-        try:
-            total_count = len(mbox)
-            if email_limit:
-                total_count = min(total_count, email_limit)
-        except:
-            pass  # Some mbox files don't support len()
-
     print(f"\n[*] Processing emails...\n")
 
     start_time = time.time()
 
-    # Initialize progress bar
-    progress = ProgressBar(total=total_count, enable=True)
+    # Initialize progress bar (no total count - avoids pre-scanning entire mbox)
+    progress = ProgressBar(total=None, enable=True)
 
     # Process each email
     for msg in mbox:
