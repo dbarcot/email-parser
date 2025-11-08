@@ -521,26 +521,30 @@ def extract_email_body(msg):
 # EMAIL FILTERING
 # =============================================================================
 
-def email_involves_target(msg, target_email):
+def email_involves_target(msg, target_email, from_only=False):
     """
     Check if target email is involved in From/To/Cc/Reply-To headers.
-    
+
     Args:
         msg: email.message.Message object
         target_email: Target email address (normalized lowercase)
-    
+        from_only: If True, only check From header; otherwise check all headers
+
     Returns:
         Boolean
     """
-    headers_to_check = ['From', 'To', 'Cc', 'Reply-To']
-    
+    if from_only:
+        headers_to_check = ['From']
+    else:
+        headers_to_check = ['From', 'To', 'Cc', 'Reply-To']
+
     for header in headers_to_check:
         header_value = msg.get(header, '')
         if header_value:
             emails = extract_email_addresses(header_value)
             if target_email in emails:
                 return True
-    
+
     return False
 
 # =============================================================================
@@ -771,11 +775,11 @@ signal.signal(signal.SIGINT, signal_handler)
 # MAIN PROCESSING FUNCTION
 # =============================================================================
 
-def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file, 
-                 email_limit=None, dry_run=False):
+def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
+                 email_limit=None, dry_run=False, from_only=False):
     """
     Main processing function.
-    
+
     Args:
         mbox_path: Path to mbox file
         target_email: Target email address (normalized lowercase)
@@ -784,7 +788,8 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
         log_file: CSV log file path
         email_limit: Maximum emails to process (None = unlimited)
         dry_run: If True, only count matches without saving
-    
+        from_only: If True, only filter by From header (ignore To/Cc/Reply-To)
+
     Returns:
         Statistics dict
     """
@@ -807,6 +812,10 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
         return None
 
     print(f"[*] Target email: {target_email}")
+    if from_only:
+        print(f"[*] Filter mode: From field only")
+    else:
+        print(f"[*] Filter mode: From/To/Cc/Reply-To fields")
     print(f"[*] Output dir: {output_dir}")
     if dry_run:
         print(f"[*] DRY RUN MODE - no files will be saved")
@@ -846,7 +855,7 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
         
         try:
             # === FILTER 1: Email match ===
-            if not email_involves_target(msg, target_email):
+            if not email_involves_target(msg, target_email, from_only=from_only):
                 continue
             
             # === CONTENT EXTRACTION ===
@@ -962,13 +971,16 @@ def main():
 Examples:
   # Basic usage
   python vacation_email_extractor.py --mbox archive.mbox --email jan.novak@firma.cz
-  
+
   # With custom output directory
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --output ./results
-  
+
+  # Filter only emails FROM the target address (ignore To/Cc/Reply-To)
+  python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --from-only
+
   # Dry run (count matches only)
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --dry-run
-  
+
   # Process only first 100 emails
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --email-limit 100
         """
@@ -1012,7 +1024,13 @@ Examples:
         default='extraction_log.csv',
         help='CSV log file path (default: extraction_log.csv)'
     )
-    
+
+    parser.add_argument(
+        '--from-only',
+        action='store_true',
+        help='Filter emails only by From field (ignore To/Cc/Reply-To)'
+    )
+
     args = parser.parse_args()
     
     # Validate mbox file
@@ -1056,7 +1074,8 @@ Examples:
         failed_dir=failed_dir,
         log_file=args.log_file,
         email_limit=args.email_limit,
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        from_only=args.from_only
     )
     
     if stats is None:
