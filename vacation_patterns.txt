@@ -1,0 +1,147 @@
+# ============================================================================
+# VACATION/OOO EMAIL KEYWORD PATTERNS
+# ============================================================================
+#
+# This file contains regex patterns for detecting vacation and out-of-office
+# related keywords in emails (Czech and English).
+#
+# FORMAT:
+#   - One pattern per line
+#   - Lines starting with # are comments
+#   - Empty lines are ignored
+#   - Patterns are case-insensitive
+#   - Use standard Python regex syntax
+#
+# USAGE:
+#   python vacation_email_extractor.py --mbox file.mbox --email user@domain.com
+#   python vacation_email_extractor.py --patterns custom_patterns.txt ...
+#
+# ============================================================================
+
+# === DOVOLENÁ (Vacation) ===
+\bdovolen[aeouyi][a-z]*
+\bdov\b
+\bdov\.
+\bcerp[aei][a-z]*\s+dovolen
+\bzaslouzen[aeouyi]*\s+dovolen
+\bradn[aeouyi]*\s+dovolen
+
+# === PRÁZDNINY (Holidays) ===
+\bprazdnin[aeouyi]*
+\bprazd\.
+
+# === VOLNO (Time off) ===
+\bvoln[aeouyi][a-z]*
+\bvoln\b
+
+# === NEPŘÍTOMNOST (Absence) ===
+\bnepritom[a-z]*
+\bneprit\b
+\bneprit\.
+
+# === MIMO KANCELÁŘ (Out of office) ===
+\bmimo\s+kancela[rz][a-z]*
+\bmimo\s+k\b
+\bmimo\s+k\.
+\bmimo\s+provoz
+
+# === OUT OF OFFICE ===
+\bo+\s*o+\s*o+
+\bout\s+of\s+office
+\bout\s+off
+
+# === NEMOCENSKÁ / SICK LEAVE ===
+\bnemocensk[aeouyi]*
+\bnemoc\b
+\bnemoc\.
+\bnem\b
+\bnem\.
+\bpn\b
+\bp\.?\s*n\.
+\bpracovn[aeouyi]*\s+neschopn
+\bneschopenk[aeouyi]
+
+# === ZDRAVOTNÍ (Health-related) ===
+\bzdravotn[aeouyi][a-z]*
+\bzdr\.
+\bzdr\s+voln
+\bzdr\s+d[uu]vod
+
+# === ABSENCE ===
+\babsen[ct][a-z]*
+\babs\b
+\babs\.
+
+# === NEDOSTUPNÝ (Unavailable) ===
+\bnedostupn[aeouyi]*
+\bnedost\b
+\bnedost\.
+\bne\s+budu\s+dostupn
+
+# === RODIČOVSKÁ/MATEŘSKÁ/OTCOVSKÁ (Parental/Maternity/Paternity leave) ===
+\brodicovsk[aeouyi]*
+\brd\b
+\brd\.
+\br\.?\s*d\.
+\bmatersk[aeouyi]*
+\bmat\b
+\bmat\.
+\botcovsk[aeouyi]*
+\bot\b
+\bot\.
+
+# === NÁVRAT / VRÁTÍM SE (Return/Will be back) ===
+\bvrat[ii][a-z]*\s+se
+\bzpet\s+(od|az|do|v)
+\bnavrat
+\bbudu\s+zpet
+\bbudu\s+zpatky
+\bzpat(ky|ecky)
+
+# === K DISPOZICI (Available) ===
+\bk\s+dispozici
+\bdispozic[iei]
+\bne\s+budu\s+k\s+zastiz
+\bk\s+zastiz
+
+# === UŽÍVÁM SI / BAVÍM SE (Enjoying/Having fun) ===
+\buziv[aei][a-z]*
+\bbav[ii][a-z]*\s+se
+\brelax
+\bodpociv[aei]
+
+# === ENGLISH TERMS ===
+\bvacation
+\bholiday
+\bholidays
+\bsick\s+leave
+\bsick\s+day
+\bsickday
+\btime\s+off
+\bpto\b
+\bleave\b
+\bunavailable
+\baway
+\boff\s+work
+\boff\s+duty
+\bautoreply
+\bauto\s+reply
+\bautomatic\s+reply
+
+# === SPECIFIC PHRASES ===
+\bv\s+dob[ee]\s+m[ee]\s+nepritom
+\bpo\s+dobu\s+m[ee]\s+nepritom
+\bbehem\s+m[ee]\s+nepritom
+\bodpov[ii][a-z]*\s+az\s+po
+\bnemonitor
+\bne\s+check
+\bomezen[aeouyi]*\s+prist
+\blimited\s+access
+\bno\s+access
+\bno\s+email
+
+# === TIME INDICATORS ===
+\bod\s+\d+\.\d+
+\bdo\s+\d+\.\d+
+\baz\s+do\s+\d+
+\bvr[aa]t[ii][a-z]*\s+\d+\.
