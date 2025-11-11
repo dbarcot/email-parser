@@ -6,7 +6,8 @@ Suite of tools for extracting and filtering vacation/OOO related emails from mbo
 
 1. **vacation_email_extractor.py** - Extract vacation/OOO emails from mbox files using regex patterns
 2. **llm_vacation_filter.py** - Filter false positives using Azure OpenAI LLM analysis
-3. **eml_to_mbox.py** - Convert EML files to MBOX format
+3. **llm_test.py** - Test Azure OpenAI connection and configuration
+4. **eml_to_mbox.py** - Convert EML files to MBOX format
 
 ## Funkce
 
@@ -330,7 +331,68 @@ AZURE_OPENAI_PRICE_INPUT=0.15
 AZURE_OPENAI_PRICE_OUTPUT=0.60
 ```
 
-### 3. Prepare Prompts
+### 3. Test Your Connection
+
+Before processing emails, test your Azure OpenAI configuration:
+
+```bash
+python llm_test.py
+```
+
+**This will verify:**
+- ✓ .env file exists and is properly configured
+- ✓ All required environment variables are set
+- ✓ Azure OpenAI connection works
+- ✓ Model deployment is accessible
+- ✓ API can analyze a sample vacation email
+- ✓ Token usage and cost calculation works
+
+**Example output:**
+```
+================================================================================
+AZURE OPENAI CONNECTION TEST
+================================================================================
+
+STEP 1: Testing .env configuration
+[✓] .env file found
+[✓] AZURE_OPENAI_ENDPOINT: https://your-resource.openai.azure.com/
+[✓] AZURE_OPENAI_API_KEY: sk-proj-abc...xyz1
+[✓] AZURE_OPENAI_DEPLOYMENT: gpt-4o-mini
+[✓] Pricing: $0.15/1M input, $0.60/1M output
+
+STEP 2: Testing Azure OpenAI connection
+[✓] Azure OpenAI client created successfully
+
+STEP 3: Testing LLM analysis with sample vacation email
+[✓] LLM Response received successfully!
+
+--- LLM Analysis Result ---
+Decision: VACATION RESPONSE
+Confidence: 95.00%
+Reasoning: Clear vacation notification with dates and alternative contact
+
+--- Token Usage ---
+Input tokens:  245
+Output tokens: 28
+Total tokens:  273
+
+--- Cost ---
+This request:  $0.000054 USD
+Est. per 1000 emails: $0.05 USD
+
+✓✓✓ ALL TESTS PASSED ✓✓✓
+
+Your Azure OpenAI configuration is working correctly!
+```
+
+**If test fails, check:**
+- .env file exists in current directory
+- All credentials are correct (copy from Azure Portal)
+- Deployment name matches your Azure OpenAI deployment
+- API endpoint URL is complete and correct
+- Network connectivity to Azure
+
+### 4. Prepare Prompts
 
 Example prompts are provided in `prompts/` directory:
 - `prompts/system.txt` - System instructions for the LLM
@@ -363,6 +425,52 @@ python llm_vacation_filter.py \
   --email-limit 10
 ```
 
+### Debug Mode
+
+Use `--debug` to see exactly what text is being sent to the LLM:
+
+```bash
+python llm_vacation_filter.py \
+  --input-dir ./vacation_emails \
+  --system-prompt ./prompts/system.txt \
+  --user-prompt ./prompts/user.txt \
+  --output-dir ./test_results \
+  --log-file ./test_log.csv \
+  --email-limit 5 \
+  --debug
+```
+
+**Debug output shows:**
+- Email filename and headers (From, Date, Subject)
+- Full body length vs. immediate reply length
+- Exact text being sent to LLM (truncated to 500 chars for display)
+- Whether text will be truncated to 4000 chars
+
+**Example debug output:**
+```
+================================================================================
+[DEBUG] Email: 20240115_jan.novak_vacation.eml
+================================================================================
+From: jan.novak@firma.cz
+Date: Mon, 15 Jan 2024 10:30:00 +0100
+Subject: Re: Project Update
+
+Full body length: 2,450 chars
+Immediate reply length: 180 chars
+
+--- Immediate Reply Text (sent to LLM) ---
+Ahoj, budu na dovolené od 15.1. do 30.1.
+V případě naléhavosti kontaktujte kolegu Petra.
+Děkuji, Jan
+--- End of Immediate Reply ---
+```
+
+**Use debug mode to verify:**
+- ✓ Only immediate reply is extracted (no quoted history)
+- ✓ Email is from the correct sender
+- ✓ Text length is reasonable (not too short/long)
+- ✓ Czech characters are decoded correctly
+
 ## Parameters
 
 ### Required
@@ -376,6 +484,7 @@ python llm_vacation_filter.py \
 ### Optional
 
 - `--email-limit N` - Process maximum N emails (for testing)
+- `--debug` - Show debug output including extracted reply text before sending to LLM
 
 ## Output Structure
 
@@ -719,6 +828,18 @@ Pro bug reporty a feature requesty kontaktujte vývojáře.
 - CSV logging
 - Ctrl+C handling
 - Dry-run mode
+
+### llm_test.py v1.0 (2025-11-11)
+- Initial release
+- Test Azure OpenAI connection and configuration
+- Verify .env settings
+- Send sample vacation email for analysis
+- Show token usage and cost estimates
+- Provide clear success/failure diagnostics
+
+### llm_vacation_filter.py v1.1 (2025-11-11)
+- Add --debug flag to show extracted reply text before sending to LLM
+- Verify immediate reply extraction is working correctly
 
 ### llm_vacation_filter.py v1.0 (2025-11-11)
 - Initial release

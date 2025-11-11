@@ -8,7 +8,7 @@ Takes EML files from vacation_email_extractor.py output and uses LLM to
 determine which are genuine vacation responses vs. false positives.
 
 Author: Claude
-Version: 1.0
+Version: 1.1
 """
 
 import os
@@ -568,7 +568,7 @@ class ProgressTracker:
 # =============================================================================
 
 def process_emails(input_dir, system_prompt_path, user_prompt_path,
-                   output_dir, log_file, email_limit=None):
+                   output_dir, log_file, email_limit=None, debug=False):
     """
     Main processing function.
 
@@ -579,6 +579,7 @@ def process_emails(input_dir, system_prompt_path, user_prompt_path,
         output_dir: Output directory
         log_file: CSV log file path
         email_limit: Maximum emails to process (None = unlimited)
+        debug: Show debug output (default: False)
 
     Returns:
         Statistics dict
@@ -693,6 +694,31 @@ def process_emails(input_dir, system_prompt_path, user_prompt_path,
             date_str = msg.get('Date', '')
             body = extract_email_body(msg)
             immediate_reply = extract_immediate_reply(body)
+
+            # Debug output
+            if debug:
+                print("\n" + "=" * 80)
+                print(f"[DEBUG] Email: {filename}")
+                print("=" * 80)
+                print(f"From: {from_addr}")
+                print(f"Date: {date_str}")
+                print(f"Subject: {subject}")
+                print(f"\nFull body length: {len(body):,} chars")
+                print(f"Immediate reply length: {len(immediate_reply):,} chars")
+
+                # Show truncation info if applicable
+                if len(immediate_reply) > 4000:
+                    print(f"(Will be truncated to 4000 chars for LLM)")
+
+                print("\n--- Immediate Reply Text (sent to LLM) ---")
+                display_text = immediate_reply[:4000] if len(immediate_reply) > 4000 else immediate_reply
+                # Limit display to 500 chars for readability
+                if len(display_text) > 500:
+                    print(display_text[:500])
+                    print(f"\n... [{len(display_text) - 500} more chars] ...")
+                else:
+                    print(display_text)
+                print("--- End of Immediate Reply ---\n")
 
             email_data = {
                 'from': from_addr,
@@ -888,6 +914,16 @@ Examples:
     --output-dir ./test_results \\
     --email-limit 10
 
+  # Debug mode - show extracted reply text before sending to LLM
+  python llm_vacation_filter.py \\
+    --input-dir ./vacation_emails \\
+    --system-prompt ./prompts/system.txt \\
+    --user-prompt ./prompts/user.txt \\
+    --output-dir ./test_results \\
+    --log-file ./test_log.csv \\
+    --email-limit 5 \\
+    --debug
+
 Configuration:
   Create .env file in current directory with:
     AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
@@ -938,11 +974,17 @@ Configuration:
         help='Maximum number of emails to process (default: unlimited)'
     )
 
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Show debug output including extracted reply text before sending to LLM'
+    )
+
     args = parser.parse_args()
 
     # Print header
     print("\n" + "=" * 80)
-    print("LLM-BASED VACATION EMAIL FILTER v1.0")
+    print("LLM-BASED VACATION EMAIL FILTER v1.1")
     print("=" * 80)
 
     # Validate input directory
@@ -990,7 +1032,8 @@ Configuration:
         user_prompt_path=args.user_prompt,
         output_dir=args.output_dir,
         log_file=args.log_file,
-        email_limit=args.email_limit
+        email_limit=args.email_limit,
+        debug=args.debug
     )
 
     if stats is None:
