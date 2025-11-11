@@ -15,7 +15,7 @@ This will:
 - Report success or detailed errors
 
 Author: Claude
-Version: 1.0
+Version: 1.2
 """
 
 import os
@@ -152,18 +152,29 @@ def test_llm_analysis(client, deployment):
 
     print("Sending to LLM for analysis...")
 
+    # Get optional reasoning effort (for thinking models like gpt-5-nano)
+    reasoning_effort = os.getenv('AZURE_OPENAI_REASONING_EFFORT', 'minimal')
+
     try:
-        # Send request
-        response = client.chat.completions.create(
-            model=deployment,
-            messages=[
+        # Prepare API call parameters
+        api_params = {
+            "model": deployment,
+            "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": USER_PROMPT + TEST_EMAIL}
             ],
-            response_format={"type": "json_object"},
-            temperature=0.0,
-            max_tokens=500
-        )
+            "response_format": {"type": "json_object"},
+            "temperature": 0.0,
+            "max_completion_tokens": 500
+        }
+
+        # Add reasoning_effort if set (for thinking models like gpt-5-nano)
+        if reasoning_effort:
+            api_params["reasoning_effort"] = reasoning_effort
+            print(f"Using reasoning_effort: {reasoning_effort}")
+
+        # Send request
+        response = client.chat.completions.create(**api_params)
 
         # Extract response
         content = response.choices[0].message.content

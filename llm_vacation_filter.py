@@ -8,7 +8,7 @@ Takes EML files from vacation_email_extractor.py output and uses LLM to
 determine which are genuine vacation responses vs. false positives.
 
 Author: Claude
-Version: 1.1
+Version: 1.3
 """
 
 import os
@@ -61,6 +61,7 @@ openai_client = None
 deployment_name = None
 price_input = 0.0
 price_output = 0.0
+reasoning_effort = None
 
 # =============================================================================
 # QUOTE PATTERNS (reused from vacation_email_extractor.py)
@@ -271,7 +272,7 @@ def initialize_azure_openai():
     Initialize Azure OpenAI client from .env configuration.
 
     Returns:
-        Tuple: (client, deployment_name, price_input, price_output) or (None, None, 0, 0) on error
+        Tuple: (client, deployment_name, price_input, price_output, reasoning_effort) or (None, None, 0, 0, None) on error
     """
     global openai_client, deployment_name, price_input, price_output
 
@@ -289,18 +290,21 @@ def initialize_azure_openai():
     price_in = float(os.getenv('AZURE_OPENAI_PRICE_INPUT', '0.15'))
     price_out = float(os.getenv('AZURE_OPENAI_PRICE_OUTPUT', '0.60'))
 
+    # Reasoning effort (for thinking models like gpt-5-nano)
+    reasoning_effort = os.getenv('AZURE_OPENAI_REASONING_EFFORT', 'minimal')
+
     # Validate required fields
     if not endpoint:
         print("[ERROR] AZURE_OPENAI_ENDPOINT not set in .env")
-        return None, None, 0, 0
+        return None, None, 0, 0, None
 
     if not api_key:
         print("[ERROR] AZURE_OPENAI_API_KEY not set in .env")
-        return None, None, 0, 0
+        return None, None, 0, 0, None
 
     if not deployment:
         print("[ERROR] AZURE_OPENAI_DEPLOYMENT not set in .env")
-        return None, None, 0, 0
+        return None, None, 0, 0, None
 
     # Create client
     try:
@@ -311,11 +315,13 @@ def initialize_azure_openai():
         )
 
         print(f"[✓] Azure OpenAI configured: {deployment}")
-        return client, deployment, price_in, price_out
+        if reasoning_effort:
+            print(f"[✓] Reasoning effort: {reasoning_effort}")
+        return client, deployment, price_in, price_out, reasoning_effort
 
     except Exception as e:
         print(f"[ERROR] Failed to initialize Azure OpenAI: {e}")
-        return None, None, 0, 0
+        return None, None, 0, 0, None
 
 # =============================================================================
 # LLM ANALYSIS
@@ -353,16 +359,23 @@ Respond with JSON only:
     # Try API call with retries
     for attempt in range(max_retries + 1):
         try:
-            response = openai_client.chat.completions.create(
-                model=deployment_name,
-                messages=[
+            # Prepare API call parameters
+            api_params = {
+                "model": deployment_name,
+                "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
                 ],
-                response_format={"type": "json_object"},
-                temperature=0.0,
-                max_tokens=500
-            )
+                "response_format": {"type": "json_object"},
+                "temperature": 0.0,
+                "max_completion_tokens": 500
+            }
+
+            # Add reasoning_effort if set (for thinking models like gpt-5-nano)
+            if reasoning_effort:
+                api_params["reasoning_effort"] = reasoning_effort
+
+            response = openai_client.chat.completions.create(**api_params)
 
             # Extract tokens
             input_tokens = response.usage.prompt_tokens
@@ -984,7 +997,7 @@ Configuration:
 
     # Print header
     print("\n" + "=" * 80)
-    print("LLM-BASED VACATION EMAIL FILTER v1.1")
+    print("LLM-BASED VACATION EMAIL FILTER v1.3")
     print("=" * 80)
 
     # Validate input directory
@@ -1018,8 +1031,8 @@ Configuration:
     # Initialize Azure OpenAI
     print(f"\n[*] Loading configuration from .env...")
 
-    global openai_client, deployment_name, price_input, price_output
-    openai_client, deployment_name, price_input, price_output = initialize_azure_openai()
+    global openai_client, deployment_name, price_input, price_output, reasoning_effort
+    openai_client, deployment_name, price_input, price_output, reasoning_effort = initialize_azure_openai()
 
     if not openai_client:
         print(f"[ERROR] Failed to initialize Azure OpenAI. Check .env configuration.")
