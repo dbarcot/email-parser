@@ -15,7 +15,7 @@ This will:
 - Report success or detailed errors
 
 Author: Claude
-Version: 1.2
+Version: 1.3
 """
 
 import os
@@ -155,6 +155,10 @@ def test_llm_analysis(client, deployment):
     # Get optional reasoning effort (for thinking models like gpt-5-nano)
     reasoning_effort = os.getenv('AZURE_OPENAI_REASONING_EFFORT', 'minimal')
 
+    # Get optional temperature (thinking models only support default value of 1)
+    temperature_str = os.getenv('AZURE_OPENAI_TEMPERATURE', '')
+    temperature = float(temperature_str) if temperature_str else None
+
     try:
         # Prepare API call parameters
         api_params = {
@@ -164,9 +168,13 @@ def test_llm_analysis(client, deployment):
                 {"role": "user", "content": USER_PROMPT + TEST_EMAIL}
             ],
             "response_format": {"type": "json_object"},
-            "temperature": 0.0,
             "max_completion_tokens": 500
         }
+
+        # Add temperature if set (thinking models like gpt-5-nano only support default)
+        if temperature is not None:
+            api_params["temperature"] = temperature
+            print(f"Using temperature: {temperature}")
 
         # Add reasoning_effort if set (for thinking models like gpt-5-nano)
         if reasoning_effort:
