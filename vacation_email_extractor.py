@@ -5,7 +5,7 @@ Vacation Email Extractor
 Extracts vacation/OOO related emails from mbox files for legal case processing.
 
 Author: Claude
-Version: 1.0
+Version: 1.1
 """
 
 import mailbox
@@ -704,6 +704,110 @@ def email_involves_target(msg, target_email, from_only=False):
     return False
 
 # =============================================================================
+# FAST PRE-SCAN FOR FROM-ONLY MODE
+# =============================================================================
+
+def fast_prescan_from_headers(mbox_path, target_email):
+    """
+    Fast pre-scan of mbox file to find message indices with matching From: header.
+
+    This avoids expensive parsing for 99%+ of messages that don't match the target.
+    Only scans message boundaries and From: headers using simple string matching.
+
+    Args:
+        mbox_path: Path to mbox file
+        target_email: Target email address (lowercase)
+
+    Returns:
+        Set of message indices (0-based) that have matching From: header
+    """
+    matching_indices = set()
+    message_index = -1  # Will increment to 0 on first message
+    in_headers = False
+    from_header_found = False
+
+    print(f"[*] Fast pre-scan: Finding messages FROM {target_email}...")
+    print(f"[*] This may take a few minutes for large mbox files...")
+
+    start_time = time.time()
+    bytes_read = 0
+    last_progress_time = start_time
+
+    try:
+        with open(mbox_path, 'rb') as f:
+            current_from_header = b''
+
+            for line in f:
+                bytes_read += len(line)
+
+                # Progress indicator every 2 seconds
+                current_time = time.time()
+                if current_time - last_progress_time >= 2.0:
+                    gb_read = bytes_read / (1024**3)
+                    elapsed = current_time - start_time
+                    speed_mbps = (bytes_read / (1024**2)) / elapsed if elapsed > 0 else 0
+                    print(f"\rScanning: {gb_read:.2f} GB read | {speed_mbps:.1f} MB/s | Found: {len(matching_indices)} messages", end='', flush=True)
+                    last_progress_time = current_time
+
+                # Check for message boundary (mbox format: "From " at start of line)
+                if line.startswith(b'From '):
+                    # New message starting
+                    message_index += 1
+                    in_headers = True
+                    from_header_found = False
+                    current_from_header = b''
+                    continue
+
+                # Skip if not in a message yet
+                if message_index < 0:
+                    continue
+
+                # Check for end of headers (blank line)
+                if in_headers and line.strip() == b'':
+                    # Headers ended - check if we found a match
+                    if from_header_found and current_from_header:
+                        # Decode and check if target email is in From header
+                        try:
+                            from_str = current_from_header.decode('utf-8', errors='ignore').lower()
+                            if target_email in from_str:
+                                matching_indices.add(message_index)
+                        except:
+                            pass
+
+                    # No longer in headers
+                    in_headers = False
+                    from_header_found = False
+                    current_from_header = b''
+                    continue
+
+                # Parse headers only
+                if in_headers:
+                    # Check for From: header
+                    if line.lower().startswith(b'from:'):
+                        from_header_found = True
+                        # Extract header value (everything after "From:")
+                        current_from_header = line[5:].strip()
+
+                    # Handle continuation lines (start with space or tab)
+                    elif from_header_found and (line.startswith(b' ') or line.startswith(b'\t')):
+                        # Continuation of From: header
+                        current_from_header += b' ' + line.strip()
+
+    except Exception as e:
+        print(f"\n[ERROR] Pre-scan failed: {e}")
+        return None
+
+    elapsed = time.time() - start_time
+    gb_total = bytes_read / (1024**3)
+
+    print(f"\r{'':100}", end='\r')  # Clear progress line
+    print(f"[✓] Pre-scan complete in {elapsed:.1f}s ({gb_total:.2f} GB)")
+    print(f"[✓] Found {len(matching_indices)} messages from {target_email}")
+    print(f"[✓] Will skip {message_index + 1 - len(matching_indices):,} non-matching messages")
+
+    return matching_indices
+
+# =============================================================================
 # FILENAME GENERATION
 # =============================================================================
 
@@ -951,14 +1055,29 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
         Statistics dict
     """
     global processed_count, matched_count, failed_count
-    
+
     # Initialize counters
     processed_count = 0
     matched_count = 0
     failed_count = 0
-    
+
     # Initialize CSV logger
     csv_logger = CSVLogger(log_file) if not dry_run else None
+
+    # Fast pre-scan for --from-only mode (huge speedup for large mbox)
+    prescan_indices = None
+    if from_only:
+        prescan_indices = fast_prescan_from_headers(mbox_path, target_email)
+        if prescan_indices is None:
+            print("[WARNING] Pre-scan failed, falling back to normal processing")
+        elif len(prescan_indices) == 0:
+            print("[!] No messages found from target email. Exiting.")
+            return {
+                'processed': 0,
+                'matched': 0,
+                'failed': 0,
+                'elapsed': 0
+            }
 
     # Open mbox file
     print(f"\n[*] Opening mbox file: {mbox_path}")
@@ -970,7 +1089,7 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
 
     print(f"[*] Target email: {target_email}")
     if from_only:
-        print(f"[*] Filter mode: From field only")
+        print(f"[*] Filter mode: From field only (fast pre-scan enabled)")
     else:
         print(f"[*] Filter mode: From/To/Cc/Reply-To fields")
     if reply_only:
@@ -991,7 +1110,12 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
     progress = ProgressBar(total=None, enable=True)
 
     # Process each email
-    for msg in mbox:
+    for msg_index, msg in enumerate(mbox):
+        # === FAST SKIP: Pre-scan optimization ===
+        # If pre-scan was done and this message wasn't in results, skip it entirely
+        if prescan_indices is not None and msg_index not in prescan_indices:
+            continue
+
         # Check email limit
         if email_limit and processed_count >= email_limit:
             progress.finish()
@@ -1002,10 +1126,11 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
 
         # Update progress bar
         progress.update(processed_count, matched_count, failed_count)
-        
+
         try:
             # === FILTER 1: Email match ===
-            if not email_involves_target(msg, target_email, from_only=from_only):
+            # (Skip this check if pre-scan was used - we already know it matches)
+            if prescan_indices is None and not email_involves_target(msg, target_email, from_only=from_only):
                 continue
             
             # === CONTENT EXTRACTION ===

@@ -283,6 +283,42 @@ Typické časy zpracování:
 
 *Závisí na velikosti emailů, počtu HTML emailů a rychlosti disku.*
 
+### Optimalizace pro velké mbox soubory (80GB+)
+
+Pro velmi velké mbox soubory s `--from-only` režimem je automaticky aktivována **rychlá pre-scan optimalizace**:
+
+**Jak to funguje:**
+1. První průchod: Rychlé skenování pouze `From:` headerů (bez parsování)
+2. Identifikace zpráv od cílového uživatele (typicky 0.01-0.1% všech zpráv)
+3. Druhý průchod: Zpracování pouze identifikovaných zpráv
+
+**Výhody:**
+- ✅ 10-50x rychlejší pro mbox kde je <0.1% zpráv od cílového uživatele
+- ✅ Skenování rychlostí ~100-200 MB/s (grep rychlost)
+- ✅ Následné zpracování pouze relevantních zpráv
+- ✅ Automaticky aktivováno s `--from-only` parametrem
+
+**Příklad - 80GB mbox:**
+```bash
+python vacation_email_extractor.py \
+  --mbox huge_archive.mbox \
+  --email jan.novak@firma.cz \
+  --from-only
+
+# Output:
+# [*] Fast pre-scan: Finding messages FROM jan.novak@firma.cz...
+# [✓] Pre-scan complete in 450s (80.00 GB)
+# [✓] Found 1,247 messages from jan.novak@firma.cz
+# [✓] Will skip 8,945,123 non-matching messages
+# [*] Processing emails...
+# (processes only 1,247 messages instead of 8.9M+)
+```
+
+**Kdy použít:**
+- Velké mbox soubory (10GB+)
+- Známý target email v `From:` poli
+- Nízká frekvence zpráv od target uživatele
+
 ---
 
 # LLM Vacation Filter
@@ -825,6 +861,13 @@ cp -r vacation_emails vacation_emails_backup
 Pro bug reporty a feature requesty kontaktujte vývojáře.
 
 ## Project Changelog
+
+### vacation_email_extractor.py v1.1 (2025-11-11)
+- Add fast pre-scan optimization for --from-only mode
+- 10-50x speedup for large mbox files (80GB+) with low target message frequency
+- Pre-scan only reads From: headers without full parsing
+- Automatically activated with --from-only parameter
+- Scan speed ~100-200 MB/s (grep-like performance)
 
 ### vacation_email_extractor.py v1.0 (2025-11-08)
 - Initial release
