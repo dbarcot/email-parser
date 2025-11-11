@@ -836,6 +836,11 @@ Pro bug reporty a feature requesty kontaktujte vývojáře.
 - Ctrl+C handling
 - Dry-run mode
 
+### llm_test.py v1.3 (2025-11-11)
+- Fix temperature parameter for thinking models (gpt-5-nano only supports default)
+- Make temperature optional via AZURE_OPENAI_TEMPERATURE in .env
+- Leave empty for thinking models to use default value (1.0)
+
 ### llm_test.py v1.2 (2025-11-11)
 - Add reasoning_effort parameter support for thinking models (gpt-5-nano)
 - Configure via AZURE_OPENAI_REASONING_EFFORT in .env (minimal/medium/high)
@@ -852,6 +857,12 @@ Pro bug reporty a feature requesty kontaktujte vývojáře.
 - Send sample vacation email for analysis
 - Show token usage and cost estimates
 - Provide clear success/failure diagnostics
+
+### llm_vacation_filter.py v1.4 (2025-11-11)
+- Fix temperature parameter for thinking models (gpt-5-nano only supports default)
+- Make temperature optional via AZURE_OPENAI_TEMPERATURE in .env
+- Leave empty for thinking models to use default value (1.0)
+- Non-thinking models can use 0.0 for deterministic responses
 
 ### llm_vacation_filter.py v1.3 (2025-11-11)
 - Add reasoning_effort parameter support for thinking models (gpt-5-nano)
