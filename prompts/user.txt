@@ -1,0 +1,34 @@
+Analyze the email reply below and determine if it represents a genuine absence/vacation response indicating the sender is currently unavailable from work.
+
+ANALYSIS CRITERIA:
+
+1. Is this an automated out-of-office message?
+   - Look for auto-reply markers (headers, formatting)
+   - Standardized language patterns
+   - Lack of personalized content
+
+2. Is this a manual notification of current absence?
+   - Explicit statement of being unavailable
+   - Specific dates or timeframes
+   - Alternative contact information provided
+
+3. Does it indicate CURRENT unavailability?
+   - Present tense or immediate future ("I am on vacation", "Starting today I will be...")
+   - NOT past tense ("I was away", "I returned from...")
+   - NOT future planning ("I will be taking vacation next month")
+
+4. Is it about work absence specifically?
+   - Vacation, sick leave, parental leave, business travel
+   - Out of office, unavailable, limited access to email
+   - NOT casual conversation mentioning vacation
+
+5. RED FLAGS for false positives:
+   - Conversational tone discussing vacation plans
+   - Asking questions or providing detailed responses
+   - Mentioning vacation in context of other topics
+   - Past or future tense without current absence statement
+   - Discussing vacation policy, approval, or scheduling
+
+Be conservative: if the email could be interpreted as regular correspondence that happens to mention absence/vacation, classify it as FALSE.
+
+Only classify as TRUE if there is clear evidence of current unavailability for work-related absence.
