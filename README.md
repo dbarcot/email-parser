@@ -363,6 +363,52 @@ python llm_vacation_filter.py \
   --email-limit 10
 ```
 
+### Debug Mode
+
+Use `--debug` to see exactly what text is being sent to the LLM:
+
+```bash
+python llm_vacation_filter.py \
+  --input-dir ./vacation_emails \
+  --system-prompt ./prompts/system.txt \
+  --user-prompt ./prompts/user.txt \
+  --output-dir ./test_results \
+  --log-file ./test_log.csv \
+  --email-limit 5 \
+  --debug
+```
+
+**Debug output shows:**
+- Email filename and headers (From, Date, Subject)
+- Full body length vs. immediate reply length
+- Exact text being sent to LLM (truncated to 500 chars for display)
+- Whether text will be truncated to 4000 chars
+
+**Example debug output:**
+```
+================================================================================
+[DEBUG] Email: 20240115_jan.novak_vacation.eml
+================================================================================
+From: jan.novak@firma.cz
+Date: Mon, 15 Jan 2024 10:30:00 +0100
+Subject: Re: Project Update
+
+Full body length: 2,450 chars
+Immediate reply length: 180 chars
+
+--- Immediate Reply Text (sent to LLM) ---
+Ahoj, budu na dovolené od 15.1. do 30.1.
+V případě naléhavosti kontaktujte kolegu Petra.
+Děkuji, Jan
+--- End of Immediate Reply ---
+```
+
+**Use debug mode to verify:**
+- ✓ Only immediate reply is extracted (no quoted history)
+- ✓ Email is from the correct sender
+- ✓ Text length is reasonable (not too short/long)
+- ✓ Czech characters are decoded correctly
+
 ## Parameters
 
 ### Required
@@ -376,6 +422,7 @@ python llm_vacation_filter.py \
 ### Optional
 
 - `--email-limit N` - Process maximum N emails (for testing)
+- `--debug` - Show debug output including extracted reply text before sending to LLM
 
 ## Output Structure
 
@@ -719,6 +766,10 @@ Pro bug reporty a feature requesty kontaktujte vývojáře.
 - CSV logging
 - Ctrl+C handling
 - Dry-run mode
+
+### llm_vacation_filter.py v1.1 (2025-11-11)
+- Add --debug flag to show extracted reply text before sending to LLM
+- Verify immediate reply extraction is working correctly
 
 ### llm_vacation_filter.py v1.0 (2025-11-11)
 - Initial release
