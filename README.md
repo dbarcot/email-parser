@@ -327,9 +327,16 @@ AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key-here
 AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
 AZURE_OPENAI_API_VERSION=2024-02-15-preview
+AZURE_OPENAI_REASONING_EFFORT=minimal
 AZURE_OPENAI_PRICE_INPUT=0.15
 AZURE_OPENAI_PRICE_OUTPUT=0.60
 ```
+
+**Note about `AZURE_OPENAI_REASONING_EFFORT`:**
+- For thinking models like **gpt-5-nano**, set this to control reasoning depth
+- Options: `minimal` (fast), `medium` (balanced), `high` (thorough)
+- Recommended: `minimal` for vacation email classification (near-nonthinking, fastest)
+- For non-thinking models (gpt-4o-mini, gpt-4o), this parameter is ignored
 
 ### 3. Test Your Connection
 
@@ -829,6 +836,11 @@ Pro bug reporty a feature requesty kontaktujte vývojáře.
 - Ctrl+C handling
 - Dry-run mode
 
+### llm_test.py v1.2 (2025-11-11)
+- Add reasoning_effort parameter support for thinking models (gpt-5-nano)
+- Configure via AZURE_OPENAI_REASONING_EFFORT in .env (minimal/medium/high)
+- Speeds up processing for thinking models
+
 ### llm_test.py v1.1 (2025-11-11)
 - Fix max_tokens parameter error (change to max_completion_tokens)
 - Compatible with newer Azure OpenAI API versions
@@ -840,6 +852,11 @@ Pro bug reporty a feature requesty kontaktujte vývojáře.
 - Send sample vacation email for analysis
 - Show token usage and cost estimates
 - Provide clear success/failure diagnostics
+
+### llm_vacation_filter.py v1.3 (2025-11-11)
+- Add reasoning_effort parameter support for thinking models (gpt-5-nano)
+- Configure via AZURE_OPENAI_REASONING_EFFORT in .env (minimal/medium/high)
+- Speeds up processing significantly for thinking models
 
 ### llm_vacation_filter.py v1.2 (2025-11-11)
 - Fix max_tokens parameter error (change to max_completion_tokens)
