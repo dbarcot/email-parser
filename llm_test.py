@@ -15,7 +15,7 @@ This will:
 - Report success or detailed errors
 
 Author: Claude
-Version: 1.0
+Version: 1.1
 """
 
 import os
@@ -162,7 +162,7 @@ def test_llm_analysis(client, deployment):
             ],
             response_format={"type": "json_object"},
             temperature=0.0,
-            max_tokens=500
+            max_completion_tokens=500
         )
 
         # Extract response

@@ -8,7 +8,7 @@ Takes EML files from vacation_email_extractor.py output and uses LLM to
 determine which are genuine vacation responses vs. false positives.
 
 Author: Claude
-Version: 1.1
+Version: 1.2
 """
 
 import os
@@ -361,7 +361,7 @@ Respond with JSON only:
                 ],
                 response_format={"type": "json_object"},
                 temperature=0.0,
-                max_tokens=500
+                max_completion_tokens=500
             )
 
             # Extract tokens
@@ -984,7 +984,7 @@ Configuration:
 
     # Print header
     print("\n" + "=" * 80)
-    print("LLM-BASED VACATION EMAIL FILTER v1.1")
+    print("LLM-BASED VACATION EMAIL FILTER v1.2")
     print("=" * 80)
 
     # Validate input directory

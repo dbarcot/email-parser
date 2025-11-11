@@ -829,6 +829,10 @@ Pro bug reporty a feature requesty kontaktujte vývojáře.
 - Ctrl+C handling
 - Dry-run mode
 
+### llm_test.py v1.1 (2025-11-11)
+- Fix max_tokens parameter error (change to max_completion_tokens)
+- Compatible with newer Azure OpenAI API versions
+
 ### llm_test.py v1.0 (2025-11-11)
 - Initial release
 - Test Azure OpenAI connection and configuration
@@ -836,6 +840,10 @@ Pro bug reporty a feature requesty kontaktujte vývojáře.
 - Send sample vacation email for analysis
 - Show token usage and cost estimates
 - Provide clear success/failure diagnostics
+
+### llm_vacation_filter.py v1.2 (2025-11-11)
+- Fix max_tokens parameter error (change to max_completion_tokens)
+- Compatible with newer Azure OpenAI API versions
 
 ### llm_vacation_filter.py v1.1 (2025-11-11)
 - Add --debug flag to show extracted reply text before sending to LLM
