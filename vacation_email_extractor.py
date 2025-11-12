@@ -938,7 +938,7 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
 
     Args:
         mbox_path: Path to mbox file
-        target_email: Target email address (normalized lowercase)
+        target_email: Target email address (normalized lowercase), or None to search all emails
         output_dir: Output directory for matched emails
         failed_dir: Directory for failed emails
         log_file: CSV log file path
@@ -968,11 +968,14 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
         print(f"[ERROR] Failed to open mbox file: {e}")
         return None
 
-    print(f"[*] Target email: {target_email}")
-    if from_only:
-        print(f"[*] Filter mode: From field only")
+    if target_email:
+        print(f"[*] Target email: {target_email}")
+        if from_only:
+            print(f"[*] Filter mode: From field only")
+        else:
+            print(f"[*] Filter mode: From/To/Cc/Reply-To fields")
     else:
-        print(f"[*] Filter mode: From/To/Cc/Reply-To fields")
+        print(f"[*] Target email: All emails (no email filter)")
     if reply_only:
         print(f"[*] Search mode: Immediate reply only (quoted text filtered)")
     else:
@@ -1005,7 +1008,8 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
         
         try:
             # === FILTER 1: Email match ===
-            if not email_involves_target(msg, target_email, from_only=from_only):
+            # Skip email filter if target_email is not specified
+            if target_email and not email_involves_target(msg, target_email, from_only=from_only):
                 continue
             
             # === CONTENT EXTRACTION ===
@@ -1126,6 +1130,9 @@ Examples:
   # Basic usage
   python vacation_email_extractor.py --mbox archive.mbox --email jan.novak@firma.cz
 
+  # Search all emails without email filter (regex patterns only)
+  python vacation_email_extractor.py --mbox archive.mbox
+
   # With custom output directory
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --output ./results
 
@@ -1134,6 +1141,9 @@ Examples:
 
   # Use custom pattern file
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --patterns my_patterns.txt
+
+  # Search all emails with custom patterns
+  python vacation_email_extractor.py --mbox archive.mbox --patterns my_patterns.txt
 
   # Search only in immediate reply (filter quoted email history)
   python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --reply-only
@@ -1155,8 +1165,9 @@ Examples:
     
     parser.add_argument(
         '--email',
-        required=True,
-        help='Target email address (case-insensitive)'
+        required=False,
+        default=None,
+        help='Target email address (case-insensitive). If not provided, all emails will be searched.'
     )
     
     # Optional arguments
@@ -1215,12 +1226,15 @@ Examples:
         sys.exit(1)
     
     # Normalize target email
-    target_email = args.email.lower().strip()
-    
-    # Validate email format (basic)
-    if '@' not in target_email:
-        print(f"[ERROR] Invalid email format: {args.email}")
-        sys.exit(1)
+    if args.email:
+        target_email = args.email.lower().strip()
+
+        # Validate email format (basic)
+        if '@' not in target_email:
+            print(f"[ERROR] Invalid email format: {args.email}")
+            sys.exit(1)
+    else:
+        target_email = None
     
     # Create output directories
     output_dir = args.output
