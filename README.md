@@ -7,7 +7,8 @@ Suite of tools for extracting and filtering vacation/OOO related emails from mbo
 1. **vacation_email_extractor.py** - Extract vacation/OOO emails from mbox files using regex patterns
 2. **llm_vacation_filter.py** - Filter false positives using Azure OpenAI LLM analysis
 3. **llm_test.py** - Test Azure OpenAI connection and configuration
-4. **eml_to_mbox.py** - Convert EML files to MBOX format
+4. **mbox_attachment_extractor.py** - Extract emails with attachments matching regex patterns ([README](ATTACHMENT_EXTRACTOR_README.md))
+5. **eml_to_mbox.py** - Convert EML files to MBOX format
 
 ## Funkce
 
