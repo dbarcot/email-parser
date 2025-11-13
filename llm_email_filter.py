@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-LLM-Based Vacation Email Filter
-================================
-Uses Azure OpenAI to filter vacation/OOO emails and reduce false positives.
+LLM-Based Email Filter
+======================
+Uses Azure OpenAI to filter emails and reduce false positives.
 
-Takes EML files from vacation_email_extractor.py output and uses LLM to
-determine which are genuine vacation responses vs. false positives.
+Takes EML files from mbox_email_parser.py output and uses LLM to
+determine which are genuine matches vs. false positives.
 
 Author: Claude
-Version: 1.4
+Version: 2.0
 """
 
 import os
@@ -65,7 +65,7 @@ reasoning_effort = None
 temperature = None
 
 # =============================================================================
-# QUOTE PATTERNS (reused from vacation_email_extractor.py)
+# QUOTE PATTERNS (reused from mbox_email_parser.py)
 # =============================================================================
 
 QUOTE_PATTERNS = [
@@ -113,7 +113,7 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 # =============================================================================
-# HELPER FUNCTIONS (reused from vacation_email_extractor.py)
+# HELPER FUNCTIONS (reused from mbox_email_parser.py)
 # =============================================================================
 
 def decode_header_value(header_value):
@@ -363,7 +363,7 @@ Subject: {email_data['subject']}
 {email_data['body']}
 
 Respond with JSON only:
-{{"is_vacation_response": true/false, "confidence": 0.95, "reasoning": "brief explanation"}}"""
+{{"is_match": true/false, "confidence": 0.95, "reasoning": "brief explanation"}}"""
 
     # Try API call with retries
     for attempt in range(max_retries + 1):
@@ -406,12 +406,12 @@ Respond with JSON only:
             result = json.loads(content)
 
             # Validate result structure
-            if 'is_vacation_response' not in result or 'confidence' not in result:
+            if 'is_match' not in result or 'confidence' not in result:
                 raise ValueError("Invalid JSON structure from LLM")
 
             return {
                 'success': True,
-                'decision': result['is_vacation_response'],
+                'decision': result['is_match'],
                 'confidence': result['confidence'],
                 'reasoning': result.get('reasoning', ''),
                 'input_tokens': input_tokens,
@@ -919,29 +919,29 @@ def process_emails(input_dir, system_prompt_path, user_prompt_path,
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='Filter vacation emails using Azure OpenAI LLM',
+        description='Filter emails using Azure OpenAI LLM',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Basic usage
-  python llm_vacation_filter.py \\
-    --input-dir ./vacation_emails \\
+  python llm_email_filter.py \\
+    --input-dir ./emails \\
     --system-prompt ./prompts/system.txt \\
     --user-prompt ./prompts/user.txt \\
     --output-dir ./filtered_results \\
     --log-file ./filter_log.csv
 
   # Process limited number of emails for testing
-  python llm_vacation_filter.py \\
-    --input-dir ./vacation_emails \\
+  python llm_email_filter.py \\
+    --input-dir ./emails \\
     --system-prompt ./prompts/system.txt \\
     --user-prompt ./prompts/user.txt \\
     --output-dir ./test_results \\
     --email-limit 10
 
   # Debug mode - show extracted reply text before sending to LLM
-  python llm_vacation_filter.py \\
-    --input-dir ./vacation_emails \\
+  python llm_email_filter.py \\
+    --input-dir ./emails \\
     --system-prompt ./prompts/system.txt \\
     --user-prompt ./prompts/user.txt \\
     --output-dir ./test_results \\
@@ -1009,7 +1009,7 @@ Configuration:
 
     # Print header
     print("\n" + "=" * 80)
-    print("LLM-BASED VACATION EMAIL FILTER v1.4")
+    print("LLM-BASED EMAIL FILTER v2.0")
     print("=" * 80)
 
     # Validate input directory
