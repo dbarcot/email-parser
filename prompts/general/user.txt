@@ -1,0 +1,34 @@
+Analyze the email below and determine if it matches the specified search criteria.
+
+ANALYSIS CRITERIA:
+
+1. Content Relevance
+   - Does the email contain the keywords or patterns being searched for?
+   - Is the content directly related to the search objective?
+   - Are the terms used in a meaningful context?
+
+2. Context Analysis
+   - What is the overall context of the email?
+   - Is this a primary discussion or tangential mention?
+   - Is the content current, past, or future-oriented?
+
+3. Intent and Purpose
+   - What is the purpose of the email?
+   - Is it informational, transactional, or conversational?
+   - Does it serve the classification objective?
+
+4. Temporal Relevance
+   - Is the content about current, past, or future events?
+   - Does the timeframe matter for classification?
+   - Are there specific dates or time indicators?
+
+5. RED FLAGS for false positives:
+   - Casual or conversational mentions
+   - Planning or hypothetical discussions
+   - Past events without current relevance
+   - Forwarding or discussing others' information
+   - Regular correspondence with incidental keyword matches
+
+Be conservative: if the email could be interpreted as general correspondence that happens to contain relevant terms without substantive relevance, classify it as FALSE.
+
+Only classify as TRUE if there is clear evidence that the email genuinely matches the search objective.

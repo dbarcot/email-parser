@@ -1,15 +1,15 @@
-# 📦 Vacation Email Extractor - Complete Package
+# 📦 MBOX Email Parser - Complete Package
 
 ## ✅ Co bylo vytvořeno
 
-Kompletní Python aplikace pro extrakci vacation/OOO emailů z mbox souborů.
+General-purpose Python aplikace pro extrakci emailů z mbox souborů pomocí customizable regex patterns (default: vacation/OOO detection).
 
 ### 📁 Soubory v balíčku:
 
-1. **vacation_email_extractor.py** (28 KB)
+1. **mbox_email_parser.py** (28 KB)
    - Hlavní Python script
    - Kompletně funkční, otestovaný
-   - Žádné externí konfigurace potřeba
+   - Customizable search patterns
 
 2. **requirements.txt**
    - Python dependencies (pouze beautifulsoup4)
@@ -38,10 +38,10 @@ pip install -r requirements.txt
 
 # 2. Test funkčnosti
 python create_test_mbox.py
-python vacation_email_extractor.py --mbox test_emails.mbox --email jan.novak@firma.cz --dry-run
+python mbox_email_parser.py --mbox test_emails.mbox --email jan.novak@firma.cz --dry-run
 
 # 3. Použití na reálných datech
-python vacation_email_extractor.py --mbox your_archive.mbox --email target@email.com
+python mbox_email_parser.py --mbox your_archive.mbox --email target@email.com
 ```
 
 ## ✨ Hlavní funkce
@@ -50,10 +50,10 @@ python vacation_email_extractor.py --mbox your_archive.mbox --email target@email
 
 - **Prohledává kompletní tělo emailu** (plain text + HTML konverze)
 - **Filtruje podle emailové adresy** v From/To/Cc/Reply-To
-- **Detekuje české i anglické vacation keywords**
-  - Dovolená, OOO, nemocenská, volno, nepřítomen
-  - Vacation, out of office, sick leave, time off
-  - 60+ regex patterns
+- **Customizable regex patterns** (default: české i anglické vacation keywords)
+  - Default patterns: Dovolená, OOO, nemocenská, volno, nepřítomen
+  - Default patterns: Vacation, out of office, sick leave, time off
+  - 60+ built-in patterns, fully customizable
 - **Ukládá kompletní emaily jako EML** (včetně příloh)
 - **Collision handling** - automatické přidání _001, _002 suffix
 - **Charset fallback** - cp1250 → utf-8 → latin1
@@ -101,7 +101,7 @@ Failed: 0 emailů
 
 ### 1. Legal Case - Kompletní extrakce
 ```bash
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox legal_archive.mbox \
     --email subject@company.com \
     --output ./case_2024_001 \
@@ -110,7 +110,7 @@ python vacation_email_extractor.py \
 
 ### 2. Částečné zpracování (test)
 ```bash
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox huge_archive.mbox \
     --email person@company.com \
     --email-limit 1000
@@ -118,7 +118,7 @@ python vacation_email_extractor.py \
 
 ### 3. Dry-run (pouze zjistit počet)
 ```bash
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox archive.mbox \
     --email person@company.com \
     --dry-run
@@ -243,12 +243,20 @@ Script je **production-ready** a testovaný na reálných datech.
 
 ---
 
-**Version:** 1.0  
-**Date:** 2024-11-08  
-**Status:** ✅ Production Ready  
-**License:** Internal Use  
+**Version:** 2.0
+**Date:** 2024-11-13
+**Status:** ✅ Production Ready
+**License:** Internal Use
 
 ## 📝 Changelog
+
+### v2.0 (2024-11-13)
+- ✅ Generalized to MBOX Email Parser (from Vacation-specific)
+- ✅ Customizable regex patterns via search_patterns.txt
+- ✅ Renamed tools: mbox_email_parser.py, llm_email_filter.py
+- ✅ Added prompts/vacation/ and prompts/general/ subdirectories
+- ✅ Generalized LLM prompts for custom use cases
+- ✅ Updated all documentation
 
 ### v1.0 (2024-11-08)
 - ✅ Initial release
