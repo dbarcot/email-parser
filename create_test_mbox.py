@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate sample mbox file for testing vacation_email_extractor.py
+Generate sample mbox file for testing mbox_email_parser.py
 """
 
 import mailbox
@@ -106,8 +106,8 @@ def create_test_mbox(filename='test_emails.mbox'):
     print(f"    - Email 6: FW with vacation (to jan.novak)")
     print(f"    - Email 7: NO MATCH (not involving jan.novak)")
     print(f"    - Email 8: Řádná dovolená (to jan.novak)")
-    print(f"\n[*] Test the extractor:")
-    print(f"    python vacation_email_extractor.py --mbox {filename} --email jan.novak@firma.cz --dry-run")
+    print(f"\n[*] Test the parser:")
+    print(f"    python mbox_email_parser.py --mbox {filename} --email jan.novak@firma.cz --dry-run")
 
 if __name__ == '__main__':
     create_test_mbox()

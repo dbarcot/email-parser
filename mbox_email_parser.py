@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Vacation Email Extractor
-========================
-Extracts vacation/OOO related emails from mbox files for legal case processing.
+MBOX Email Parser
+=================
+Extracts emails matching search patterns from mbox files for legal case processing.
 
 Author: Claude
-Version: 1.0
+Version: 2.0
 """
 
 import mailbox
@@ -40,11 +40,12 @@ except ImportError:
     HAS_TQDM = False
 
 # =============================================================================
-# REGEX PATTERNS FOR VACATION KEYWORDS
+# REGEX PATTERNS FOR EMAIL SEARCH
 # =============================================================================
 
 # Default built-in patterns (fallback if external file not found)
-DEFAULT_VACATION_PATTERNS = [
+# These patterns are optimized for vacation/OOO detection but can be customized
+DEFAULT_SEARCH_PATTERNS = [
     # === DOVOLENÁ ===
     r'\bdovolen[aeouyi][a-z]*',
     r'\bdov\b',
@@ -231,7 +232,7 @@ def initialize_patterns(pattern_file=None):
 
     # Try default pattern file
     if not patterns:
-        default_pattern_file = os.path.join(os.path.dirname(__file__), 'vacation_patterns.txt')
+        default_pattern_file = os.path.join(os.path.dirname(__file__), 'search_patterns.txt')
         if os.path.exists(default_pattern_file):
             patterns = load_patterns_from_file(default_pattern_file)
             if patterns:
@@ -239,8 +240,8 @@ def initialize_patterns(pattern_file=None):
 
     # Fall back to built-in patterns
     if not patterns:
-        print(f"[*] Using built-in patterns ({len(DEFAULT_VACATION_PATTERNS)} patterns)")
-        patterns = DEFAULT_VACATION_PATTERNS
+        print(f"[*] Using built-in patterns ({len(DEFAULT_SEARCH_PATTERNS)} patterns)")
+        patterns = DEFAULT_SEARCH_PATTERNS
 
     # Compile patterns for performance
     COMPILED_PATTERNS = [re.compile(p, re.IGNORECASE) for p in patterns]
@@ -372,13 +373,13 @@ def normalize_text(text):
 # KEYWORD MATCHING
 # =============================================================================
 
-def contains_vacation_keyword(normalized_text):
+def contains_search_keyword(normalized_text):
     """
-    Check if normalized text contains any vacation-related keywords.
-    
+    Check if normalized text contains any search keywords from patterns.
+
     Args:
         normalized_text: Text already normalized (lowercase, no diacritics)
-    
+
     Returns:
         Tuple: (has_match: bool, matched_keywords: list, match_positions: list)
     """
@@ -1034,9 +1035,9 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
             
             # === NORMALIZE ===
             normalized_text = normalize_text(search_text)
-            
+
             # === FILTER 2: Keyword match ===
-            has_match, keywords, positions = contains_vacation_keyword(normalized_text)
+            has_match, keywords, positions = contains_search_keyword(normalized_text)
             
             if not has_match:
                 continue
@@ -1123,36 +1124,36 @@ def process_mbox(mbox_path, target_email, output_dir, failed_dir, log_file,
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='Extract vacation/OOO related emails from mbox file',
+        description='Extract emails matching search patterns from mbox file',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Basic usage
-  python vacation_email_extractor.py --mbox archive.mbox --email jan.novak@firma.cz
+  # Basic usage (with vacation/OOO patterns)
+  python mbox_email_parser.py --mbox archive.mbox --email jan.novak@firma.cz
 
   # Search all emails without email filter (regex patterns only)
-  python vacation_email_extractor.py --mbox archive.mbox
+  python mbox_email_parser.py --mbox archive.mbox
 
   # With custom output directory
-  python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --output ./results
+  python mbox_email_parser.py --mbox archive.mbox --email jan@firma.cz --output ./results
 
   # Filter only emails FROM the target address (ignore To/Cc/Reply-To)
-  python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --from-only
+  python mbox_email_parser.py --mbox archive.mbox --email jan@firma.cz --from-only
 
   # Use custom pattern file
-  python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --patterns my_patterns.txt
+  python mbox_email_parser.py --mbox archive.mbox --email jan@firma.cz --patterns my_patterns.txt
 
   # Search all emails with custom patterns
-  python vacation_email_extractor.py --mbox archive.mbox --patterns my_patterns.txt
+  python mbox_email_parser.py --mbox archive.mbox --patterns my_patterns.txt
 
   # Search only in immediate reply (filter quoted email history)
-  python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --reply-only
+  python mbox_email_parser.py --mbox archive.mbox --email jan@firma.cz --reply-only
 
   # Dry run (count matches only)
-  python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --dry-run
+  python mbox_email_parser.py --mbox archive.mbox --email jan@firma.cz --dry-run
 
   # Process only first 100 emails
-  python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --email-limit 100
+  python mbox_email_parser.py --mbox archive.mbox --email jan@firma.cz --email-limit 100
         """
     )
     
@@ -1205,7 +1206,7 @@ Examples:
     parser.add_argument(
         '--patterns',
         default=None,
-        help='Custom pattern file (default: vacation_patterns.txt if exists, otherwise built-in)'
+        help='Custom pattern file (default: search_patterns.txt if exists, otherwise built-in)'
     )
 
     parser.add_argument(
@@ -1250,7 +1251,7 @@ Examples:
     
     # Initialize patterns
     print("\n" + "="*50)
-    print("VACATION EMAIL EXTRACTOR v1.0")
+    print("MBOX EMAIL PARSER v2.0")
     print("="*50)
 
     initialize_patterns(pattern_file=args.patterns)
