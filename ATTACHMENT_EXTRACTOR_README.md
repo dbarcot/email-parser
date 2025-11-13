@@ -617,18 +617,18 @@ python mbox_attachment_extractor.py \
 
 ## Comparison with Existing Tools
 
-### vs vacation_email_extractor.py
+### vs mbox_email_parser.py
 
-| Feature | vacation_email_extractor | mbox_attachment_extractor |
-|---------|-------------------------|---------------------------|
-| Purpose | Extract vacation/OOO emails | Extract by attachment name |
+| Feature | mbox_email_parser | mbox_attachment_extractor |
+|---------|------------------|---------------------------|
+| Purpose | Extract emails by content patterns | Extract by attachment name |
 | Filter | Email content (body/subject) | Attachment filename |
-| Pattern | Built-in keywords + regex | User-defined regex |
+| Pattern | Customizable regex (default: vacation/OOO) | User-defined regex |
 | Output | EML files only | EML + extracted attachments |
 | Naming | Timestamp-based | UUID-based |
 
 **Use together:**
-1. Use `vacation_email_extractor.py` to filter emails
+1. Use `mbox_email_parser.py` to filter emails by content
 2. Use `mbox_attachment_extractor.py` to extract specific attachments from results
 
 ## Future Enhancements (v2.0 planned)

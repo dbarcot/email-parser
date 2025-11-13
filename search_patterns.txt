@@ -1,9 +1,10 @@
 # ============================================================================
-# VACATION/OOO EMAIL KEYWORD PATTERNS
+# EMAIL SEARCH PATTERNS
 # ============================================================================
 #
-# This file contains regex patterns for detecting vacation and out-of-office
-# related keywords in emails (Czech and English).
+# This file contains regex patterns for email content matching.
+# The patterns below are optimized for vacation/OOO detection (Czech & English),
+# but you can customize this file for any use case by modifying the patterns.
 #
 # FORMAT:
 #   - One pattern per line
@@ -13,8 +14,21 @@
 #   - Use standard Python regex syntax
 #
 # USAGE:
-#   python vacation_email_extractor.py --mbox file.mbox --email user@domain.com
-#   python vacation_email_extractor.py --patterns custom_patterns.txt ...
+#   # Use default patterns (this file)
+#   python mbox_email_parser.py --mbox file.mbox --email user@domain.com
+#
+#   # Use custom pattern file
+#   python mbox_email_parser.py --mbox file.mbox --patterns custom_patterns.txt
+#
+# EXAMPLES OF USE CASES:
+#   - Vacation/OOO detection (default patterns below)
+#   - Legal terms search (e.g., contract, agreement, lawsuit)
+#   - Compliance keywords (e.g., confidential, NDA, proprietary)
+#   - Project-specific terms (e.g., project names, product codes)
+#
+# ============================================================================
+#
+# DEFAULT PATTERNS: VACATION/OOO DETECTION (Czech & English)
 #
 # ============================================================================
 

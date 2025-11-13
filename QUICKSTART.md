@@ -1,20 +1,23 @@
-# 🚀 Quick Start Guide
+# 🚀 Quick Start Guide - MBOX Email Parser
 
 ## Instalace (5 minut)
 
 ```bash
 # 1. Stáhni soubory
-# vacation_email_extractor.py
+# mbox_email_parser.py (main tool)
+# search_patterns.txt (regex patterns - default: vacation/OOO)
 # requirements.txt
 
 # 2. Nainstaluj dependencies
 pip install -r requirements.txt
 
 # 3. Ověř instalaci
-python vacation_email_extractor.py --help
+python mbox_email_parser.py --help
 ```
 
 ## První použití
+
+> **Note**: This guide uses the default vacation/OOO pattern matching. The tool can be customized for any search patterns by modifying `search_patterns.txt` or using `--patterns custom_patterns.txt`.
 
 ### Krok 1: Test s ukázkovými daty
 
@@ -23,7 +26,7 @@ python vacation_email_extractor.py --help
 python create_test_mbox.py
 
 # Spusť dry-run (jen spočítá matches)
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox test_emails.mbox \
     --email jan.novak@firma.cz \
     --dry-run
@@ -40,7 +43,7 @@ Failed emails:   0
 
 ```bash
 # Spusť na reálných datech
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox your_archive.mbox \
     --email target@email.cz \
     --output ./results
@@ -51,7 +54,7 @@ python vacation_email_extractor.py \
 ### Právní případ - kompletní extrakce
 
 ```bash
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox /path/to/legal_archive.mbox \
     --email subject.person@company.com \
     --output ./case_2024_001 \
@@ -61,7 +64,7 @@ python vacation_email_extractor.py \
 ### Částečné zpracování (test na prvních 100 emailech)
 
 ```bash
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox large_archive.mbox \
     --email person@company.com \
     --email-limit 100 \
@@ -71,7 +74,7 @@ python vacation_email_extractor.py \
 ### Pouze zjistit počet matchů (bez ukládání)
 
 ```bash
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox archive.mbox \
     --email person@company.com \
     --dry-run

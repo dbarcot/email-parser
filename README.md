@@ -1,11 +1,11 @@
-# Email Parser Tools
+# MBOX Email Parser
 
-Suite of tools for extracting and filtering vacation/OOO related emails from mbox files for legal case processing.
+General-purpose toolkit for extracting and filtering emails from mbox files based on customizable search patterns. Optimized for legal case processing with vacation/OOO detection as the primary use case.
 
 ## Tools
 
-1. **vacation_email_extractor.py** - Extract vacation/OOO emails from mbox files using regex patterns
-2. **llm_vacation_filter.py** - Filter false positives using Azure OpenAI LLM analysis
+1. **mbox_email_parser.py** - Extract emails from mbox files using customizable regex patterns (default: vacation/OOO keywords)
+2. **llm_email_filter.py** - Filter false positives using Azure OpenAI LLM analysis
 3. **llm_test.py** - Test Azure OpenAI connection and configuration
 4. **mbox_attachment_extractor.py** - Extract emails with attachments matching regex patterns ([README](ATTACHMENT_EXTRACTOR_README.md))
 5. **eml_to_mbox.py** - Convert EML files to MBOX format
@@ -14,7 +14,7 @@ Suite of tools for extracting and filtering vacation/OOO related emails from mbo
 
 - ✅ Prohledává celé textové tělo emailu (plain text + HTML)
 - ✅ Filtruje podle emailové adresy v From/To/Cc/Reply-To
-- ✅ Detekuje české i anglické vacation/OOO keywords
+- ✅ Customizable regex patterns (default: české i anglické vacation/OOO keywords)
 - ✅ Ukládá kompletní emaily jako EML (včetně příloh)
 - ✅ Collision handling s incrementálním suffixem
 - ✅ Charset fallback (cp1250 → utf-8 → latin1)
@@ -37,7 +37,7 @@ pip install -r requirements.txt
 ### 2. Ověření instalace
 
 ```bash
-python vacation_email_extractor.py --help
+python mbox_email_parser.py --help
 ```
 
 ## Použití
@@ -45,32 +45,32 @@ python vacation_email_extractor.py --help
 ### Základní použití
 
 ```bash
-python vacation_email_extractor.py --mbox archive.mbox --email jan.novak@firma.cz
+python mbox_email_parser.py --mbox archive.mbox --email jan.novak@firma.cz
 ```
 
 ### Pokročilé použití
 
 ```bash
 # S vlastním output adresářem
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox archive.mbox \
     --email jan.novak@firma.cz \
     --output ./results
 
 # Dry run (pouze spočítat matches)
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox archive.mbox \
     --email jan.novak@firma.cz \
     --dry-run
 
 # Zpracovat pouze prvních 100 emailů
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox archive.mbox \
     --email jan.novak@firma.cz \
     --email-limit 100
 
 # Všechny parametry dohromady
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox archive.mbox \
     --email jan.novak@firma.cz \
     --output ./legal_case_001 \
@@ -165,7 +165,7 @@ pip install beautifulsoup4
 
 ```bash
 # Zpracuj po částech s --email-limit
-python vacation_email_extractor.py --mbox huge.mbox --email jan@firma.cz --email-limit 10000
+python mbox_email_parser.py --mbox huge.mbox --email jan@firma.cz --email-limit 10000
 # Pak pokračuj od místa přerušení (zatím není implementováno - bude v v2.0)
 ```
 
@@ -219,7 +219,7 @@ Všechny doposud zpracované emaily jsou uložené.
 
 ```bash
 # Zjisti počet matchů bez ukládání
-python vacation_email_extractor.py --mbox archive.mbox --email jan@firma.cz --dry-run
+python mbox_email_parser.py --mbox archive.mbox --email jan@firma.cz --dry-run
 ```
 
 ### 2. Uchovej originální mbox
@@ -232,7 +232,7 @@ Nikdy nepřepisuj originální mbox soubor!
 # Vytvoř script pro reprodukovatelnost
 cat > extract_case_001.sh << 'EOF'
 #!/bin/bash
-python vacation_email_extractor.py \
+python mbox_email_parser.py \
     --mbox /path/to/archive.mbox \
     --email subject@firma.cz \
     --output ./case_001_results \
@@ -286,11 +286,11 @@ Typické časy zpracování:
 
 ---
 
-# LLM Vacation Filter
+# LLM Email Filter
 
 ## Overview
 
-`llm_vacation_filter.py` uses Azure OpenAI to analyze emails extracted by `vacation_email_extractor.py` and filter out false positives. It provides LLM-powered analysis to distinguish genuine vacation/absence responses from casual mentions of vacation in regular correspondence.
+`llm_email_filter.py` uses Azure OpenAI to analyze emails extracted by `mbox_email_parser.py` and filter out false positives. It provides LLM-powered analysis with customizable prompts for various use cases (default: distinguishing genuine vacation/absence responses from casual mentions).
 
 ## Features
 
@@ -403,20 +403,25 @@ Your Azure OpenAI configuration is working correctly!
 ### 4. Prepare Prompts
 
 Example prompts are provided in `prompts/` directory:
-- `prompts/system.txt` - System instructions for the LLM
-- `prompts/user.txt` - Analysis criteria and guidelines
+- `prompts/vacation/` - Vacation/OOO specific prompts (default use case)
+  - `system.txt` - System instructions for vacation detection
+  - `user.txt` - Analysis criteria for absence responses
+- `prompts/general/` - Generic templates for custom use cases
+  - `system.txt` - Generalized system prompt template
+  - `user.txt` - Generalized analysis criteria
 
-You can customize these prompts for your specific use case.
+See [prompts/README.md](prompts/README.md) for details on customizing prompts.
 
 ## Usage
 
 ### Basic Usage
 
 ```bash
-python llm_vacation_filter.py \
-  --input-dir ./vacation_emails \
-  --system-prompt ./prompts/system.txt \
-  --user-prompt ./prompts/user.txt \
+# Using vacation/OOO prompts (default use case)
+python llm_email_filter.py \
+  --input-dir ./output \
+  --system-prompt ./prompts/vacation/system.txt \
+  --user-prompt ./prompts/vacation/user.txt \
   --output-dir ./filtered_results \
   --log-file ./filter_log.csv
 ```
@@ -424,10 +429,10 @@ python llm_vacation_filter.py \
 ### Test with Limited Emails
 
 ```bash
-python llm_vacation_filter.py \
-  --input-dir ./vacation_emails \
-  --system-prompt ./prompts/system.txt \
-  --user-prompt ./prompts/user.txt \
+python llm_email_filter.py \
+  --input-dir ./output \
+  --system-prompt ./prompts/vacation/system.txt \
+  --user-prompt ./prompts/vacation/user.txt \
   --output-dir ./test_results \
   --log-file ./test_log.csv \
   --email-limit 10
@@ -438,10 +443,10 @@ python llm_vacation_filter.py \
 Use `--debug` to see exactly what text is being sent to the LLM:
 
 ```bash
-python llm_vacation_filter.py \
-  --input-dir ./vacation_emails \
-  --system-prompt ./prompts/system.txt \
-  --user-prompt ./prompts/user.txt \
+python llm_email_filter.py \
+  --input-dir ./output \
+  --system-prompt ./prompts/vacation/system.txt \
+  --user-prompt ./prompts/vacation/user.txt \
   --output-dir ./test_results \
   --log-file ./test_log.csv \
   --email-limit 5 \
@@ -483,7 +488,7 @@ Děkuji, Jan
 
 ### Required
 
-- `--input-dir DIR` - Directory with EML files from vacation_email_extractor.py
+- `--input-dir DIR` - Directory with EML files from mbox_email_parser.py
 - `--system-prompt FILE` - Path to system prompt file (must exist)
 - `--user-prompt FILE` - Path to user prompt file (must exist)
 - `--output-dir DIR` - Output directory for filtered results
@@ -617,30 +622,31 @@ JSON report:       ./filter_report.json
 
 ## Workflow Example
 
-### Step 1: Extract vacation emails with regex
+### Step 1: Extract emails with regex patterns
 
 ```bash
-python vacation_email_extractor.py \
+# Example: Extract vacation/OOO emails (default patterns)
+python mbox_email_parser.py \
   --mbox archive.mbox \
   --email jan.novak@firma.cz \
-  --output ./vacation_emails
+  --output ./extracted_emails
 ```
 
-Result: 500 potential vacation emails extracted
+Result: 500 potential matching emails extracted
 
 ### Step 2: Filter with LLM
 
 ```bash
-python llm_vacation_filter.py \
-  --input-dir ./vacation_emails \
-  --system-prompt ./prompts/system.txt \
-  --user-prompt ./prompts/user.txt \
+python llm_email_filter.py \
+  --input-dir ./extracted_emails \
+  --system-prompt ./prompts/vacation/system.txt \
+  --user-prompt ./prompts/vacation/user.txt \
   --output-dir ./filtered_results \
   --log-file ./filter_log.csv
 ```
 
 Result:
-- ✓ 45 genuine vacation responses (matched/)
+- ✓ 45 genuine matches (matched/)
 - ✗ 453 false positives (rejected/)
 - ⚠ 2 processing errors (failed/)
 
@@ -767,7 +773,7 @@ All processed emails are saved. Resume by processing remaining files only.
 
 ```bash
 # Test with 10 emails
-python llm_vacation_filter.py ... --email-limit 10
+python llm_email_filter.py ... --email-limit 10
 ```
 
 ### 2. Review confidence scores
@@ -795,7 +801,7 @@ cat filtered_results/filter_report.json | grep cost
 
 ### 5. Backup original emails
 
-Always keep original emails from `vacation_email_extractor.py`:
+Always keep original emails from `mbox_email_parser.py`:
 
 ```bash
 cp -r vacation_emails vacation_emails_backup
@@ -827,7 +833,7 @@ Pro bug reporty a feature requesty kontaktujte vývojáře.
 
 ## Project Changelog
 
-### vacation_email_extractor.py v1.0 (2025-11-08)
+### mbox_email_parser.py v1.0 (2025-11-08)
 - Initial release
 - Kompletní Czech + English keyword detection
 - Collision handling
@@ -859,26 +865,26 @@ Pro bug reporty a feature requesty kontaktujte vývojáře.
 - Show token usage and cost estimates
 - Provide clear success/failure diagnostics
 
-### llm_vacation_filter.py v1.4 (2025-11-11)
+### llm_email_filter.py v1.4 (2025-11-11)
 - Fix temperature parameter for thinking models (gpt-5-nano only supports default)
 - Make temperature optional via AZURE_OPENAI_TEMPERATURE in .env
 - Leave empty for thinking models to use default value (1.0)
 - Non-thinking models can use 0.0 for deterministic responses
 
-### llm_vacation_filter.py v1.3 (2025-11-11)
+### llm_email_filter.py v1.3 (2025-11-11)
 - Add reasoning_effort parameter support for thinking models (gpt-5-nano)
 - Configure via AZURE_OPENAI_REASONING_EFFORT in .env (minimal/medium/high)
 - Speeds up processing significantly for thinking models
 
-### llm_vacation_filter.py v1.2 (2025-11-11)
+### llm_email_filter.py v1.2 (2025-11-11)
 - Fix max_tokens parameter error (change to max_completion_tokens)
 - Compatible with newer Azure OpenAI API versions
 
-### llm_vacation_filter.py v1.1 (2025-11-11)
+### llm_email_filter.py v1.1 (2025-11-11)
 - Add --debug flag to show extracted reply text before sending to LLM
 - Verify immediate reply extraction is working correctly
 
-### llm_vacation_filter.py v1.0 (2025-11-11)
+### llm_email_filter.py v1.0 (2025-11-11)
 - Initial release
 - Azure OpenAI integration
 - Confidence-based filename prefixes
