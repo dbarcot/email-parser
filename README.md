@@ -1,898 +1,271 @@
 # MBOX Email Parser
 
-General-purpose toolkit for extracting and filtering emails from mbox files based on customizable search patterns. Optimized for legal case processing with vacation/OOO detection as the primary use case.
+General-purpose toolkit for extracting and filtering emails from MBOX files based on customizable search patterns.
 
-## Tools
+## 🎯 What This Project Does
 
-1. **mbox_email_parser.py** - Extract emails from mbox files using customizable regex patterns (default: vacation/OOO keywords)
-2. **llm_email_filter.py** - Filter false positives using Azure OpenAI LLM analysis
-3. **llm_test.py** - Test Azure OpenAI connection and configuration
-4. **mbox_attachment_extractor.py** - Extract emails with attachments matching regex patterns ([README](ATTACHMENT_EXTRACTOR_README.md))
-5. **eml_to_mbox.py** - Convert EML files to MBOX format
+This toolkit helps you extract specific emails from large MBOX archives using pattern matching and AI-powered filtering. Designed for legal case processing, compliance auditing, and content discovery.
 
-## Funkce
+**Primary use case:** Extract vacation/OOO emails from mailbox archives with high accuracy
 
-- ✅ Prohledává celé textové tělo emailu (plain text + HTML)
-- ✅ Filtruje podle emailové adresy v From/To/Cc/Reply-To
-- ✅ Customizable regex patterns (default: české i anglické vacation/OOO keywords)
-- ✅ Ukládá kompletní emaily jako EML (včetně příloh)
-- ✅ Collision handling s incrementálním suffixem
-- ✅ Charset fallback (cp1250 → utf-8 → latin1)
-- ✅ CSV logging s detaily
-- ✅ Graceful Ctrl+C handling
-- ✅ Dry-run mode pro testování
-- ✅ Email limit pro částečné zpracování
+**Other use cases:** Any keyword-based email search (legal terms, compliance keywords, project-specific content)
 
-## Instalace
+## ✨ Key Features
 
-### 1. Python Requirements
+- **Customizable pattern matching** - Default: 60+ vacation/OOO keywords (Czech & English)
+- **AI-powered false positive filtering** - Uses Azure OpenAI to reduce false matches
+- **Complete email preservation** - Saves full EML files with attachments
+- **Robust charset handling** - Works with Czech, English, and mixed encodings
+- **Legal case ready** - CSV logging, reproducible extraction, audit trails
+- **Production tested** - Handles large archives (100K+ emails)
 
-Vyžaduje Python 3.7+
+## 🚀 Quick Start
 
 ```bash
-# Instalace dependencies
+# 1. Install dependencies
 pip install -r requirements.txt
+
+# 2. Generate test data
+python create_test_mbox.py
+
+# 3. Test extraction (should find 6 matches)
+python mbox_email_parser.py --mbox test_emails.mbox --email jan.novak@firma.cz --dry-run
+
+# 4. Extract from real archive
+python mbox_email_parser.py --mbox your_archive.mbox --email target@email.com --output ./results
 ```
 
-### 2. Ověření instalace
+See **[QUICKSTART.md](QUICKSTART.md)** for detailed getting started guide.
+
+## 🛠️ Tools
+
+### Core Tools
+
+#### 1. **mbox_email_parser.py** - Email Extraction
+Extract emails from MBOX files using regex pattern matching.
 
 ```bash
-python mbox_email_parser.py --help
+python mbox_email_parser.py --mbox archive.mbox --email person@company.com
 ```
 
-## Použití
-
-### Základní použití
-
-```bash
-python mbox_email_parser.py --mbox archive.mbox --email jan.novak@firma.cz
-```
-
-### Pokročilé použití
-
-```bash
-# S vlastním output adresářem
-python mbox_email_parser.py \
-    --mbox archive.mbox \
-    --email jan.novak@firma.cz \
-    --output ./results
-
-# Dry run (pouze spočítat matches)
-python mbox_email_parser.py \
-    --mbox archive.mbox \
-    --email jan.novak@firma.cz \
-    --dry-run
-
-# Zpracovat pouze prvních 100 emailů
-python mbox_email_parser.py \
-    --mbox archive.mbox \
-    --email jan.novak@firma.cz \
-    --email-limit 100
-
-# Všechny parametry dohromady
-python mbox_email_parser.py \
-    --mbox archive.mbox \
-    --email jan.novak@firma.cz \
-    --output ./legal_case_001 \
-    --log-file case_001_log.csv \
-    --email-limit 1000
-```
-
-## Parametry
-
-### Povinné
-
-- `--mbox PATH` - Cesta k mbox souboru
-- `--email EMAIL` - Cílový email (case-insensitive)
-
-### Volitelné
-
-- `--output DIR` - Output adresář (default: `./output`)
-- `--email-limit N` - Zpracovat max N emailů
-- `--dry-run` - Pouze spočítat matches, neukládat soubory
-- `--log-file PATH` - Cesta k CSV logu (default: `extraction_log.csv`)
-
-## Output struktura
-
-```
-output/
-├── 20240115_143022_jan.novak_abc123_dovolen.eml
-├── 20240128_091544_petr.svoboda_xyz456_nemocenska.eml
-├── 20240203_162315_marie.nova_def789_ooo_001.eml  ← collision suffix
-└── failed/
-    ├── failed_email_0001.eml  ← nedekódovatelné emaily
-    └── failed_email_0002.eml
-
-extraction_log.csv  ← Detailní log všech matchů
-```
-
-## CSV Log formát
-
-Log obsahuje následující sloupce:
-
-| Sloupec | Popis |
-|---------|-------|
-| `filename` | Skutečný název uloženého souboru |
-| `original_filename` | Původně generovaný název |
-| `collision` | TRUE/FALSE - byla kolize? |
-| `date` | Datum emailu |
-| `from` | Odesílatel |
-| `to` | Příjemce |
-| `subject` | Předmět |
-| `matched_keywords` | Nalezené klíčová slova |
-| `match_positions` | Pozice matchů v textu |
-
-## Detekované keywords
-
-Script detekuje tyto typy vacation/OOO zpráv:
-
-### České výrazy
-- Dovolená, dov., čerpám dovolenou
-- Prázdniny
-- Volno
-- Nepřítomen, nepřítomnost
-- Mimo kancelář, mimo provoz
-- Nemocenská, PN, pracovní neschopnost
-- Zdravotní volno
-- Absence
-- Nedostupný
-- Rodičovská, mateřská, otcovská
-- Vrátím se, budu zpět
-- K dispozici, k zastižení
-
-### Anglické výrazy
-- Vacation, holiday
-- Out of office, OOO
-- Sick leave, sick day
-- Time off, PTO
-- Unavailable, away
-- Autoreply, automatic reply
-
-### Časové fráze
-- Od 15.5., do 31.8.
-- Až do pondělí
-- Vrátím 1.6.
-
-## Troubleshooting
-
-### Problem: "BeautifulSoup not installed"
-
-```bash
-pip install beautifulsoup4
-```
-
-### Problem: Velký mbox soubor (10GB+)
-
-```bash
-# Zpracuj po částech s --email-limit
-python mbox_email_parser.py --mbox huge.mbox --email jan@firma.cz --email-limit 10000
-# Pak pokračuj od místa přerušení (zatím není implementováno - bude v v2.0)
-```
-
-### Problem: Script běží pomalu
-
-HTML emaily jsou pomalé na konverzi. Pokud není potřeba HTML konverze:
-- Odinstaluj BeautifulSoup - script bude rychlejší ale méně přesný
-
-### Problem: Charset errors i s fallbackem
-
-Velmi vzácné - pokud se stane:
-1. Email se uloží do `failed/` složky
-2. Můžeš ho ručně otevřít v email klientovi
-3. Script pokračuje dál
-
-## Progress tracking
-
-Script vypisuje progress každých 100 emailů:
-
-```
-Processed: 1,200 | Matches: 23 | Failed: 2
-Processed: 1,300 | Matches: 25 | Failed: 2
-```
-
-## Ctrl+C handling
-
-Script lze kdykoliv bezpečně přerušit Ctrl+C:
-
-```
-^C
-[!] Ctrl+C detected - graceful shutdown...
-Processed: 1,247
-Matches:   24
-Failed:    2
-
-Partial results saved.
-```
-
-Všechny doposud zpracované emaily jsou uložené.
-
-## Známá omezení
-
-1. **Deduplikace**: Script nedetekuje duplicitní emaily (by design - pro legal case)
-2. **Resume**: Nelze pokračovat od místa přerušení (plánováno v2.0)
-3. **Multiprocessing**: Single-threaded processing (pro jednoduchost a bezpečnost)
-4. **Velké přílohy**: Emaily s velmi velkými přílohami (100MB+) mohou být pomalé
-
-## Best practices pro legal cases
-
-### 1. Vždy použij dry-run nejdřív
-
-```bash
-# Zjisti počet matchů bez ukládání
-python mbox_email_parser.py --mbox archive.mbox --email jan@firma.cz --dry-run
-```
-
-### 2. Uchovej originální mbox
-
-Nikdy nepřepisuj originální mbox soubor!
-
-### 3. Dokumentuj parametry
-
-```bash
-# Vytvoř script pro reprodukovatelnost
-cat > extract_case_001.sh << 'EOF'
-#!/bin/bash
-python mbox_email_parser.py \
-    --mbox /path/to/archive.mbox \
-    --email subject@firma.cz \
-    --output ./case_001_results \
-    --log-file case_001_extraction.csv
-EOF
-chmod +x extract_case_001.sh
-```
-
-### 4. Ověř výsledky
-
-```bash
-# Zkontroluj CSV log
-head -n 20 extraction_log.csv
-
-# Zkontroluj počet souborů
-ls -la output/*.eml | wc -l
-
-# Otevři pár náhodných EML v Outlook/Thunderbird
-```
-
-## Technické detaily
-
-### Encoding handling
-
-1. Script používá deklarovaný charset z email headeru
-2. Pokud selže → fallback na cp1250 (Windows Czech)
-3. Pokud selže → fallback na utf-8
-4. Pokud selže → fallback na latin1 (nikdy neselže)
-
-### HTML konverze
-
-- BeautifulSoup odstraňuje `<script>` a `<style>` tagy
-- Extrahuje jen viditelný text
-- Zachovává mezery mezi elementy
-
-### Filename sanitization
-
-- Odstraňuje neplatné znaky pro Windows: `< > : " / \ | ? *`
-- Maximální délka: 255 znaků
-- Collision handling: `_001`, `_002`, atd.
-
-## Výkon
-
-Typické časy zpracování:
-
-- **Malý mbox** (1,000 emailů): ~30 sekund
-- **Střední mbox** (10,000 emailů): ~5 minut
-- **Velký mbox** (100,000 emailů): ~45 minut
-
-*Závisí na velikosti emailů, počtu HTML emailů a rychlosti disku.*
+**[→ Full Documentation](docs/mbox_email_parser.md)**
+
+**Key features:**
+- Customizable search patterns
+- Filter by email address (From/To/Cc/Reply-To)
+- Saves complete EML files with attachments
+- CSV logging with match details
+- Dry-run mode for testing
 
 ---
 
-# LLM Email Filter
-
-## Overview
-
-`llm_email_filter.py` uses Azure OpenAI to analyze emails extracted by `mbox_email_parser.py` and filter out false positives. It provides LLM-powered analysis with customizable prompts for various use cases (default: distinguishing genuine vacation/absence responses from casual mentions).
-
-## Features
-
-- ✅ Azure OpenAI integration (gpt-4o-mini recommended)
-- ✅ Analyzes immediate reply only (filters quoted email history)
-- ✅ Structured JSON responses with confidence scores
-- ✅ Confidence prefix in output filenames for easy sorting
-- ✅ Separates matched/rejected/failed emails into subdirectories
-- ✅ Real-time token usage and cost tracking
-- ✅ Detailed CSV log + JSON summary report
-- ✅ Retry logic with failure tracking
-- ✅ Graceful Ctrl+C handling
-- ✅ .env configuration for API credentials
-
-## Installation
-
-### 1. Install Dependencies
+#### 2. **llm_email_filter.py** - AI-Powered Filtering
+Filter false positives using Azure OpenAI LLM analysis.
 
 ```bash
-pip install -r requirements.txt
+python llm_email_filter.py \
+  --input-dir ./results \
+  --system-prompt ./prompts/vacation/system.txt \
+  --user-prompt ./prompts/vacation/user.txt \
+  --output-dir ./filtered \
+  --log-file ./filter.csv
 ```
 
-### 2. Configure Azure OpenAI
+**[→ Full Documentation](docs/llm_email_filter.md)**
 
-Copy the example environment file and configure:
+**Key features:**
+- Azure OpenAI integration (gpt-4o-mini recommended)
+- Confidence scoring (0-100%)
+- Real-time cost tracking (~$0.09 per 1000 emails)
+- Customizable prompts for any classification task
+- Separates matched/rejected/failed emails
 
-```bash
-cp .env.example .env
-```
+---
 
-Edit `.env` with your Azure OpenAI credentials:
-
-```bash
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_KEY=your-api-key-here
-AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
-AZURE_OPENAI_API_VERSION=2024-02-15-preview
-AZURE_OPENAI_REASONING_EFFORT=minimal
-AZURE_OPENAI_PRICE_INPUT=0.15
-AZURE_OPENAI_PRICE_OUTPUT=0.60
-```
-
-**Note about `AZURE_OPENAI_REASONING_EFFORT`:**
-- For thinking models like **gpt-5-nano**, set this to control reasoning depth
-- Options: `minimal` (fast), `medium` (balanced), `high` (thorough)
-- Recommended: `minimal` for vacation email classification (near-nonthinking, fastest)
-- For non-thinking models (gpt-4o-mini, gpt-4o), this parameter is ignored
-
-### 3. Test Your Connection
-
-Before processing emails, test your Azure OpenAI configuration:
+#### 3. **llm_test.py** - Azure OpenAI Testing
+Test your Azure OpenAI configuration before processing.
 
 ```bash
 python llm_test.py
 ```
 
-**This will verify:**
-- ✓ .env file exists and is properly configured
-- ✓ All required environment variables are set
-- ✓ Azure OpenAI connection works
-- ✓ Model deployment is accessible
-- ✓ API can analyze a sample vacation email
-- ✓ Token usage and cost calculation works
+**[→ Full Documentation](docs/llm_test.md)**
 
-**Example output:**
-```
-================================================================================
-AZURE OPENAI CONNECTION TEST
-================================================================================
+**Verifies:**
+- .env configuration
+- Azure credentials
+- Model deployment
+- API connectivity
+- Cost estimation
 
-STEP 1: Testing .env configuration
-[✓] .env file found
-[✓] AZURE_OPENAI_ENDPOINT: https://your-resource.openai.azure.com/
-[✓] AZURE_OPENAI_API_KEY: sk-proj-abc...xyz1
-[✓] AZURE_OPENAI_DEPLOYMENT: gpt-4o-mini
-[✓] Pricing: $0.15/1M input, $0.60/1M output
+### Utility Tools
 
-STEP 2: Testing Azure OpenAI connection
-[✓] Azure OpenAI client created successfully
+#### 4. **mbox_attachment_extractor.py** - Attachment-Based Extraction
+Extract emails by attachment name patterns.
 
-STEP 3: Testing LLM analysis with sample vacation email
-[✓] LLM Response received successfully!
-
---- LLM Analysis Result ---
-Decision: VACATION RESPONSE
-Confidence: 95.00%
-Reasoning: Clear vacation notification with dates and alternative contact
-
---- Token Usage ---
-Input tokens:  245
-Output tokens: 28
-Total tokens:  273
-
---- Cost ---
-This request:  $0.000054 USD
-Est. per 1000 emails: $0.05 USD
-
-✓✓✓ ALL TESTS PASSED ✓✓✓
-
-Your Azure OpenAI configuration is working correctly!
-```
-
-**If test fails, check:**
-- .env file exists in current directory
-- All credentials are correct (copy from Azure Portal)
-- Deployment name matches your Azure OpenAI deployment
-- API endpoint URL is complete and correct
-- Network connectivity to Azure
-
-### 4. Prepare Prompts
-
-Example prompts are provided in `prompts/` directory:
-- `prompts/vacation/` - Vacation/OOO specific prompts (default use case)
-  - `system.txt` - System instructions for vacation detection
-  - `user.txt` - Analysis criteria for absence responses
-- `prompts/general/` - Generic templates for custom use cases
-  - `system.txt` - Generalized system prompt template
-  - `user.txt` - Generalized analysis criteria
-
-See [prompts/README.md](prompts/README.md) for details on customizing prompts.
-
-## Usage
-
-### Basic Usage
-
-```bash
-# Using vacation/OOO prompts (default use case)
-python llm_email_filter.py \
-  --input-dir ./output \
-  --system-prompt ./prompts/vacation/system.txt \
-  --user-prompt ./prompts/vacation/user.txt \
-  --output-dir ./filtered_results \
-  --log-file ./filter_log.csv
-```
-
-### Test with Limited Emails
-
-```bash
-python llm_email_filter.py \
-  --input-dir ./output \
-  --system-prompt ./prompts/vacation/system.txt \
-  --user-prompt ./prompts/vacation/user.txt \
-  --output-dir ./test_results \
-  --log-file ./test_log.csv \
-  --email-limit 10
-```
-
-### Debug Mode
-
-Use `--debug` to see exactly what text is being sent to the LLM:
-
-```bash
-python llm_email_filter.py \
-  --input-dir ./output \
-  --system-prompt ./prompts/vacation/system.txt \
-  --user-prompt ./prompts/vacation/user.txt \
-  --output-dir ./test_results \
-  --log-file ./test_log.csv \
-  --email-limit 5 \
-  --debug
-```
-
-**Debug output shows:**
-- Email filename and headers (From, Date, Subject)
-- Full body length vs. immediate reply length
-- Exact text being sent to LLM (truncated to 500 chars for display)
-- Whether text will be truncated to 4000 chars
-
-**Example debug output:**
-```
-================================================================================
-[DEBUG] Email: 20240115_jan.novak_vacation.eml
-================================================================================
-From: jan.novak@firma.cz
-Date: Mon, 15 Jan 2024 10:30:00 +0100
-Subject: Re: Project Update
-
-Full body length: 2,450 chars
-Immediate reply length: 180 chars
-
---- Immediate Reply Text (sent to LLM) ---
-Ahoj, budu na dovolené od 15.1. do 30.1.
-V případě naléhavosti kontaktujte kolegu Petra.
-Děkuji, Jan
---- End of Immediate Reply ---
-```
-
-**Use debug mode to verify:**
-- ✓ Only immediate reply is extracted (no quoted history)
-- ✓ Email is from the correct sender
-- ✓ Text length is reasonable (not too short/long)
-- ✓ Czech characters are decoded correctly
-
-## Parameters
-
-### Required
-
-- `--input-dir DIR` - Directory with EML files from mbox_email_parser.py
-- `--system-prompt FILE` - Path to system prompt file (must exist)
-- `--user-prompt FILE` - Path to user prompt file (must exist)
-- `--output-dir DIR` - Output directory for filtered results
-- `--log-file FILE` - CSV log file path
-
-### Optional
-
-- `--email-limit N` - Process maximum N emails (for testing)
-- `--debug` - Show debug output including extracted reply text before sending to LLM
-
-## Output Structure
-
-```
-output-dir/
-├── matched/
-│   ├── 95_20240115_143022_jan.novak_abc123_dovolen.eml
-│   ├── 88_20240128_091544_petr.svoboda_xyz456_nemocenska.eml
-│   └── 72_20240203_162315_marie.nova_def789_ooo.eml
-├── rejected/
-│   ├── 15_20240210_103045_false_positive.eml
-│   └── 08_20240215_140022_not_vacation.eml
-├── failed/
-│   ├── failed_20240220_broken_email.eml
-│   └── failed_20240221_api_error.eml
-└── filter_report.json
-```
-
-### Filename Format
-
-All output files include a confidence score prefix (00-99):
-
-```
-{confidence}_{original_filename}.eml
-
-Examples:
-95_email.eml  → 95% confidence
-72_email.eml  → 72% confidence
-08_email.eml  → 8% confidence
-```
-
-**Benefits:**
-- Easy sorting by confidence in file explorer
-- Quick visual identification of borderline cases
-- Simple pattern filtering: `ls 9*_*.eml` shows 90%+ confidence
-
-## Output Files
-
-### CSV Log (filter_log.csv)
-
-Detailed per-email results:
-
-| Column | Description |
-|--------|-------------|
-| `filename` | Original EML filename |
-| `processed_at` | Processing timestamp |
-| `llm_decision` | true/false/error |
-| `confidence` | Confidence score (0.0-1.0) |
-| `reasoning` | LLM explanation |
-| `prompt_tokens` | Input tokens used |
-| `completion_tokens` | Output tokens used |
-| `total_tokens` | Total tokens |
-| `processing_time_ms` | Processing time in milliseconds |
-| `error_message` | Error details (if any) |
-| `retried` | Whether retry was attempted |
-| `from_address` | Email sender |
-| `subject` | Email subject |
-| `output_filename` | Output filename with confidence prefix |
-
-### JSON Report (filter_report.json)
-
-Summary statistics:
-
-```json
-{
-  "summary": {
-    "total_processed": 150,
-    "matched": 42,
-    "rejected": 105,
-    "failed": 3,
-    "total_tokens": 57801,
-    "input_tokens": 45234,
-    "output_tokens": 12567,
-    "total_cost_usd": 0.14,
-    "processing_time_seconds": 68.5,
-    "average_speed_emails_per_sec": 2.2
-  },
-  "configuration": {
-    "input_dir": "./vacation_emails",
-    "system_prompt": "./prompts/system.txt",
-    "user_prompt": "./prompts/user.txt",
-    "output_dir": "./filtered_results",
-    "model": "gpt-4o-mini",
-    "timestamp": "2024-01-15T10:30:00"
-  }
-}
-```
-
-## Real-time Status Display
-
-During processing:
-
-```
-Processing: 45/150 (30.0%) | ✓ Matched: 12 | ✗ Rejected: 31 | ⚠ Failed: 2
-Tokens: 15,234 (in: 10,156, out: 5,078) | Cost: $0.05 | Speed: 2.3/s | ETA: 45s
-```
-
-## Final Summary
-
-```
-================================================================================
-FILTERING COMPLETE
-================================================================================
-Total processed:   150
-✓ Matched:         42 (28.0%) → output/matched/
-✗ Rejected:        105 (70.0%) → output/rejected/
-⚠ Failed:          3 (2.0%) → output/failed/
-
-Token usage:
-  Input tokens:    45,234
-  Output tokens:   12,567
-  Total tokens:    57,801
-
-Cost:              $0.14 USD
-Time elapsed:      68.5 seconds
-Average speed:     2.2 emails/s
-
-Log file:          ./filter_log.csv
-JSON report:       ./filter_report.json
-================================================================================
-```
-
-## Workflow Example
-
-### Step 1: Extract emails with regex patterns
-
-```bash
-# Example: Extract vacation/OOO emails (default patterns)
-python mbox_email_parser.py \
-  --mbox archive.mbox \
-  --email jan.novak@firma.cz \
-  --output ./extracted_emails
-```
-
-Result: 500 potential matching emails extracted
-
-### Step 2: Filter with LLM
-
-```bash
-python llm_email_filter.py \
-  --input-dir ./extracted_emails \
-  --system-prompt ./prompts/vacation/system.txt \
-  --user-prompt ./prompts/vacation/user.txt \
-  --output-dir ./filtered_results \
-  --log-file ./filter_log.csv
-```
-
-Result:
-- ✓ 45 genuine matches (matched/)
-- ✗ 453 false positives (rejected/)
-- ⚠ 2 processing errors (failed/)
-
-### Step 3: Review results
-
-```bash
-# Review high-confidence matches (90%+)
-ls filtered_results/matched/9*_*.eml
-
-# Review borderline cases (60-80%)
-ls filtered_results/matched/[6-8]*_*.eml
-
-# Check rejected emails with high confidence scores (might be errors)
-ls filtered_results/rejected/9*_*.eml
-```
-
-## Cost Estimation
-
-### gpt-4o-mini Pricing (Recommended)
-
-- Input: $0.15 per 1M tokens
-- Output: $0.60 per 1M tokens
-
-**Typical costs per email:**
-- Average email: ~300 input tokens, ~50 output tokens
-- Cost per email: ~$0.00009 USD
-- 1,000 emails: ~$0.09 USD
-- 10,000 emails: ~$0.90 USD
-
-### Other Models
-
-| Model | Input (per 1M) | Output (per 1M) | Cost per 1000 emails |
-|-------|----------------|-----------------|---------------------|
-| gpt-4o-mini | $0.15 | $0.60 | $0.09 |
-| gpt-4o | $2.50 | $10.00 | $1.25 |
-| gpt-4-turbo | $10.00 | $30.00 | $4.50 |
-
-## Error Handling
-
-### Retry Logic
-
-- API errors: Retry once automatically
-- Network errors: Retry once with 2-second delay
-- Parsing errors: Log and move to failed/
-
-### Failed Emails
-
-Failed emails are saved to `output-dir/failed/` with reasons logged in CSV.
-
-Common failure reasons:
-- API timeout
-- Invalid EML format
-- Malformed response from LLM
-- Token limit exceeded (>4000 chars)
-
-## Troubleshooting
-
-### Error: "AZURE_OPENAI_ENDPOINT not set"
-
-**Solution:** Create `.env` file in current directory with Azure OpenAI configuration.
-
-```bash
-cp .env.example .env
-# Edit .env with your credentials
-```
-
-### Error: "System prompt file not found"
-
-**Solution:** Prompt files must exist. Use example prompts:
-
-```bash
-# Files should exist:
-prompts/system.txt
-prompts/user.txt
-```
-
-### High cost / Many tokens used
-
-**Solutions:**
-1. Use gpt-4o-mini instead of gpt-4 (15x cheaper)
-2. Shorten prompts (reduce system/user prompt length)
-3. Email body is truncated to 4000 chars automatically
-4. Test with `--email-limit 10` first
-
-### Low accuracy / Many false positives
-
-**Solutions:**
-1. Adjust prompts in `prompts/system.txt` and `prompts/user.txt`
-2. Lower confidence threshold when reviewing results
-3. Review borderline cases (60-80% confidence) manually
-4. Add examples to prompts for better guidance
-
-### Slow processing
-
-**Current speed:** ~2-3 emails/second
-
-**Improvement options:**
-1. Use gpt-4o-mini (faster than gpt-4)
-2. Run on multiple directories in parallel manually
-3. Future: async processing (not yet implemented)
-
-## Ctrl+C Handling
-
-Script can be interrupted safely at any time:
-
-```
-^C
-[!] Ctrl+C detected - graceful shutdown...
-Processed: 247
-Matched:   42
-Rejected:  203
-Failed:    2
-Tokens:    89,234
-Cost:      $0.08 USD
-
-Partial results saved.
-```
-
-All processed emails are saved. Resume by processing remaining files only.
-
-## Best Practices
-
-### 1. Always test with limited emails first
-
-```bash
-# Test with 10 emails
-python llm_email_filter.py ... --email-limit 10
-```
-
-### 2. Review confidence scores
-
-- 90-100%: Very likely correct
-- 70-89%: Likely correct, spot-check a few
-- 50-69%: Review manually
-- 0-49%: Likely incorrect
-
-### 3. Customize prompts for your use case
-
-Edit `prompts/system.txt` and `prompts/user.txt` to:
-- Add specific keywords for your domain
-- Include example emails
-- Adjust confidence thresholds
-- Add language-specific guidance
-
-### 4. Monitor costs
-
-Check `filter_report.json` after each run:
-
-```bash
-cat filtered_results/filter_report.json | grep cost
-```
-
-### 5. Backup original emails
-
-Always keep original emails from `mbox_email_parser.py`:
-
-```bash
-cp -r vacation_emails vacation_emails_backup
-```
-
-## Limitations
-
-1. **Sequential processing**: Processes one email at a time (async not yet implemented)
-2. **Token limits**: Very long emails truncated to 4000 chars
-3. **Cost**: Processes using paid API (estimate ~$0.09 per 1000 emails with gpt-4o-mini)
-4. **No resume**: Cannot resume interrupted sessions (process remaining files manually)
-
-## Changelog
-
-### v1.0 (2025-11-11)
-- Initial release
-- Azure OpenAI integration
-- Confidence-based filename prefixes
-- Real-time token and cost tracking
-- CSV and JSON logging
-- Retry logic with failure tracking
-- Graceful Ctrl+C handling
+**[→ Full Documentation](docs/mbox_attachment_extractor.md)**
 
 ---
 
-## Podpora
+#### 5. **eml_to_mbox.py** - EML to MBOX Conversion
+Convert extracted EML files back to MBOX format.
 
-Pro bug reporty a feature requesty kontaktujte vývojáře.
+```bash
+python eml_to_mbox.py --input "./results/*.eml" --output archive.mbox
+```
 
-## Project Changelog
+**[→ Full Documentation](docs/eml_to_mbox.md)**
 
-### mbox_email_parser.py v1.0 (2025-11-08)
-- Initial release
-- Kompletní Czech + English keyword detection
-- Collision handling
-- Charset fallback
-- HTML to text conversion
-- CSV logging
-- Ctrl+C handling
-- Dry-run mode
+---
 
-### llm_test.py v1.3 (2025-11-11)
-- Fix temperature parameter for thinking models (gpt-5-nano only supports default)
-- Make temperature optional via AZURE_OPENAI_TEMPERATURE in .env
-- Leave empty for thinking models to use default value (1.0)
+#### 6. **create_test_mbox.py** - Test Data Generator
+Generate sample MBOX file for testing and validation.
 
-### llm_test.py v1.2 (2025-11-11)
-- Add reasoning_effort parameter support for thinking models (gpt-5-nano)
-- Configure via AZURE_OPENAI_REASONING_EFFORT in .env (minimal/medium/high)
-- Speeds up processing for thinking models
+```bash
+python create_test_mbox.py
+```
 
-### llm_test.py v1.1 (2025-11-11)
-- Fix max_tokens parameter error (change to max_completion_tokens)
-- Compatible with newer Azure OpenAI API versions
+**[→ Full Documentation](docs/create_test_mbox.md)**
 
-### llm_test.py v1.0 (2025-11-11)
-- Initial release
-- Test Azure OpenAI connection and configuration
-- Verify .env settings
-- Send sample vacation email for analysis
-- Show token usage and cost estimates
-- Provide clear success/failure diagnostics
+## 📖 Documentation
 
-### llm_email_filter.py v1.4 (2025-11-11)
-- Fix temperature parameter for thinking models (gpt-5-nano only supports default)
-- Make temperature optional via AZURE_OPENAI_TEMPERATURE in .env
-- Leave empty for thinking models to use default value (1.0)
-- Non-thinking models can use 0.0 for deterministic responses
+### Getting Started
+- **[Quick Start Guide](QUICKSTART.md)** - Get running in 5 minutes
+- **[Search Patterns](search_patterns.txt)** - Customize keyword matching
+- **[LLM Prompts Guide](prompts/README.md)** - Customize AI filtering
 
-### llm_email_filter.py v1.3 (2025-11-11)
-- Add reasoning_effort parameter support for thinking models (gpt-5-nano)
-- Configure via AZURE_OPENAI_REASONING_EFFORT in .env (minimal/medium/high)
-- Speeds up processing significantly for thinking models
+### Tool Documentation
+- **[mbox_email_parser.py](docs/mbox_email_parser.md)** - Email extraction guide
+- **[llm_email_filter.py](docs/llm_email_filter.md)** - AI filtering guide
+- **[llm_test.py](docs/llm_test.md)** - Azure OpenAI testing
+- **[mbox_attachment_extractor.py](docs/mbox_attachment_extractor.md)** - Attachment extraction
+- **[eml_to_mbox.py](docs/eml_to_mbox.md)** - EML conversion utility
+- **[create_test_mbox.py](docs/create_test_mbox.md)** - Test data generator
 
-### llm_email_filter.py v1.2 (2025-11-11)
-- Fix max_tokens parameter error (change to max_completion_tokens)
-- Compatible with newer Azure OpenAI API versions
+## 💼 Common Workflows
 
-### llm_email_filter.py v1.1 (2025-11-11)
-- Add --debug flag to show extracted reply text before sending to LLM
-- Verify immediate reply extraction is working correctly
+### Workflow 1: Basic Extraction (Pattern Matching Only)
 
-### llm_email_filter.py v1.0 (2025-11-11)
-- Initial release
-- Azure OpenAI integration
-- Confidence-based filename prefixes
-- Real-time token and cost tracking
-- CSV and JSON logging
-- Retry logic with failure tracking
-- Graceful Ctrl+C handling
+```bash
+# Extract emails matching patterns
+python mbox_email_parser.py \
+  --mbox archive.mbox \
+  --email person@company.com \
+  --output ./extracted
+```
 
-## License
+**Result:** All emails matching search patterns (may include false positives)
 
-Pro interní použití.
+---
+
+### Workflow 2: High-Accuracy Extraction (Pattern + AI Filtering)
+
+```bash
+# Step 1: Extract with patterns
+python mbox_email_parser.py \
+  --mbox archive.mbox \
+  --email person@company.com \
+  --output ./extracted
+
+# Step 2: Filter with AI
+python llm_email_filter.py \
+  --input-dir ./extracted \
+  --system-prompt ./prompts/vacation/system.txt \
+  --user-prompt ./prompts/vacation/user.txt \
+  --output-dir ./filtered \
+  --log-file ./filter.csv
+```
+
+**Result:** High-accuracy matches in `./filtered/matched/` directory
+
+---
+
+### Workflow 3: Custom Pattern Search
+
+```bash
+# Create custom patterns
+cat > legal_terms.txt << 'EOF'
+\bcontract
+\bagreement
+\blawsuit
+\bconfidential
+EOF
+
+# Extract with custom patterns
+python mbox_email_parser.py \
+  --mbox archive.mbox \
+  --patterns legal_terms.txt \
+  --output ./legal_matches
+```
+
+## 🔧 Installation
+
+### Requirements
+- Python 3.7+
+- pip (Python package manager)
+
+### Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+**Dependencies:**
+- `beautifulsoup4>=4.12.0` - HTML email parsing
+- `openai>=1.0.0` - Azure OpenAI integration (for LLM filtering)
+- `python-dotenv>=1.0.0` - Environment configuration (for LLM filtering)
+- `tqdm>=4.65.0` - Progress bars
+
+### Azure OpenAI Setup (Optional, for LLM Filtering)
+
+1. Copy configuration template:
+```bash
+cp .env.example .env
+```
+
+2. Edit `.env` with your Azure credentials:
+```bash
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_KEY=your-api-key-here
+AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
+```
+
+3. Test connection:
+```bash
+python llm_test.py
+```
+
+## 📊 Performance
+
+| Archive Size | Emails | Extraction Time | LLM Filtering |
+|--------------|--------|-----------------|---------------|
+| Small | 1,000 | ~30 seconds | ~7 minutes ($0.09) |
+| Medium | 10,000 | ~5 minutes | ~70 minutes ($0.90) |
+| Large | 100,000 | ~45 minutes | ~700 minutes ($9.00) |
+
+**Notes:**
+- Extraction time depends on HTML ratio and disk speed
+- LLM filtering cost based on gpt-4o-mini pricing
+- Process in batches for better control
+
+## 🤝 Support
+
+- **Issues:** Check tool-specific documentation in [docs/](docs/)
+- **Questions:** See [QUICKSTART.md](QUICKSTART.md) for common scenarios
+- **Troubleshooting:** Each tool doc includes troubleshooting section
+
+## 📝 Version
+
+**Current Version:** 2.0
+**Status:** Production Ready
+**License:** Internal Use
+
+**Major Changes in v2.0:**
+- Generalized from vacation-specific to customizable patterns
+- Added AI-powered filtering with Azure OpenAI
+- Restructured documentation
+- Added customizable prompt system
+
+---
+
+**🎊 Start extracting!** See [QUICKSTART.md](QUICKSTART.md) to get started.
